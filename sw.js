@@ -1,4 +1,4 @@
-const CACHE_NAME = 'booststore-v4';
+const CACHE_NAME = 'booststore-v5';
 const APP_ASSETS = [
   '/',
   '/social_media_marketplace.html',
@@ -41,6 +41,12 @@ self.addEventListener('fetch', event => {
   }
 
   const requestUrl = new URL(event.request.url);
+
+  // Bypass cache for API requests so fresh data is always fetched
+  if (requestUrl.pathname.startsWith('/api/')) {
+    return;
+  }
+
   const isSameOrigin = requestUrl.origin === self.location.origin;
   const isNavigationRequest = event.request.mode === 'navigate';
   const isFreshAsset =
