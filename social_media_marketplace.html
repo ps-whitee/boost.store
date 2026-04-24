@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SocialBoost - Premium SMM Panel</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Background Animated Orbs -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <div class="app-container" id="main-app">
+    
+    <header class="header">
+      <div class="logo-box">
+        <i class="fa-solid fa-rocket"></i>
+      </div>
+      <div class="header-text">
+        <h1 class="logo-title">BoostStore</h1>
+        <p class="logo-subtitle">Elevate Your Social Presence</p>
+      </div>
+    </header>
+
+    <div class="step-indicator" style="display: none;">
+      <div class="step active" id="step1">
+        <div class="step-icon"><i class="fa-solid fa-list-ul"></i></div>
+        <span>Service</span>
+        <div class="step-line"></div>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+        <span>Details</span>
+        <div class="step-line"></div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-icon"><i class="fa-solid fa-credit-card"></i></div>
+        <span>Payment</span>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <div class="view-container">
+
+      <!-- ================= PAGE 1 ================= -->
+      <div class="page view-active" id="page1">
+        
+        <div class="search-box">
+          <i class="fa-solid fa-search search-icon"></i>
+          <input type="text" id="search-input" placeholder="Search services (e.g., Instagram Likes)...">
+        </div>
+
+        <div class="platform-tabs">
+          <button class="tab active" data-filter="all">All</button>
+          <button class="tab" data-filter="instagram"><i class="fa-brands fa-instagram"></i> Instagram</button>
+          <button class="tab" data-filter="youtube"><i class="fa-brands fa-youtube"></i> YouTube</button>
+          <button class="tab" data-filter="facebook"><i class="fa-brands fa-facebook"></i> Facebook</button>
+          <button class="tab" data-filter="twitter"><i class="fa-brands fa-x-twitter"></i> Twitter/X</button>
+          <button class="tab" data-filter="tiktok"><i class="fa-brands fa-tiktok"></i> TikTok</button>
+        </div>
+
+        <h2 class="section-title">Trending Services</h2>
+        
+        <div class="services-grid" id="services-grid">
+          <div class="service-card selected" data-platform="instagram" data-service="Instagram Followers">
+            <div class="badge hot">HOT</div>
+            <div class="service-icon insta-gradient"><i class="fa-brands fa-instagram"></i></div>
+            <h3 class="service-name">Followers</h3>
+            <p class="service-platform">Instagram</p>
+          </div>
+          <div class="service-card" data-platform="instagram" data-service="Instagram Likes">
+            <div class="service-icon insta-gradient"><i class="fa-solid fa-heart"></i></div>
+            <h3 class="service-name">Likes</h3>
+            <p class="service-platform">Instagram</p>
+          </div>
+          <div class="service-card" data-platform="youtube" data-service="YouTube Subscribers">
+            <div class="badge premium">PRO</div>
+            <div class="service-icon yt-gradient"><i class="fa-solid fa-play"></i></div>
+            <h3 class="service-name">Subscribers</h3>
+            <p class="service-platform">YouTube</p>
+          </div>
+          <div class="service-card" data-platform="youtube" data-service="YouTube Views">
+            <div class="service-icon yt-gradient"><i class="fa-solid fa-eye"></i></div>
+            <h3 class="service-name">Views</h3>
+            <p class="service-platform">YouTube</p>
+          </div>
+          <div class="service-card" data-platform="facebook" data-service="Facebook Followers">
+            <div class="service-icon fb-gradient"><i class="fa-brands fa-facebook-f"></i></div>
+            <h3 class="service-name">Followers</h3>
+            <p class="service-platform">Facebook</p>
+          </div>
+          <div class="service-card" data-platform="twitter" data-service="Twitter Followers">
+            <div class="service-icon tw-gradient"><i class="fa-brands fa-x-twitter"></i></div>
+            <h3 class="service-name">Followers</h3>
+            <p class="service-platform">Twitter/X</p>
+          </div>
+          <div class="service-card" data-platform="tiktok" data-service="TikTok Followers">
+            <div class="badge hot">HOT</div>
+            <div class="service-icon tk-gradient"><i class="fa-brands fa-tiktok"></i></div>
+            <h3 class="service-name">Followers</h3>
+            <p class="service-platform">TikTok</p>
+          </div>
+          <div class="service-card" data-platform="tiktok" data-service="TikTok Views">
+            <div class="service-icon tk-gradient"><i class="fa-solid fa-video"></i></div>
+            <h3 class="service-name">Views</h3>
+            <p class="service-platform">TikTok</p>
+          </div>
+        </div>
+
+        <div id="no-results" class="hidden">
+          <i class="fa-regular fa-face-frown-open"></i>
+          <p>No services found matching your search.</p>
+        </div>
+
+
+
+      </div>
+
+      <!-- ================= PAGE 2 ================= -->
+      <div class="page" id="page2">
+        <div class="view-header">
+          <button class="back-btn" id="btn-back-to-1"><i class="fa-solid fa-chevron-left"></i></button>
+          <h2 class="view-title" id="selected-service-title">Instagram Followers</h2>
+        </div>
+
+        <h3 class="section-title">Select a Package</h3>
+        <div class="packages" id="packages-list">
+          <div class="package-row selected" data-pkg-id="starter" data-price="99" data-qty="1000">
+            <div class="pkg-radio"><i class="fa-solid fa-check"></i></div>
+            <div class="pkg-info">
+              <div class="pkg-name">Starter Pack</div>
+              <div class="pkg-qty"><i class="fa-solid fa-bolt"></i> <span class="qty-text">1,000 units</span></div>
+            </div>
+            <div class="pkg-price price-text">₹99</div>
+          </div>
+          <div class="package-row" data-pkg-id="popular" data-price="249" data-qty="5000">
+            <div class="pkg-radio"><i class="fa-solid fa-check"></i></div>
+            <div class="pkg-info">
+              <div class="pkg-name">Popular Pack</div>
+              <div class="pkg-qty"><i class="fa-solid fa-fire"></i> <span class="qty-text">5,000 units</span></div>
+            </div>
+            <div class="pkg-price price-text">₹249</div>
+          </div>
+          <div class="package-row" data-pkg-id="pro" data-price="499" data-qty="10000">
+            <div class="pkg-radio"><i class="fa-solid fa-check"></i></div>
+            <div class="pkg-info">
+              <div class="pkg-name">Pro Pack</div>
+              <div class="pkg-qty"><i class="fa-solid fa-gem"></i> <span class="qty-text">10,000 units</span></div>
+            </div>
+            <div class="pkg-price price-text">₹499</div>
+          </div>
+          <div class="package-row" data-pkg-id="viral" data-price="999" data-qty="50000">
+            <div class="badge small">BEST VALUE</div>
+            <div class="pkg-radio"><i class="fa-solid fa-check"></i></div>
+            <div class="pkg-info">
+              <div class="pkg-name">Viral Pack</div>
+              <div class="pkg-qty"><i class="fa-solid fa-rocket"></i> <span class="qty-text">50,000 units</span></div>
+            </div>
+            <div class="pkg-price price-text">₹999</div>
+          </div>
+        </div>
+
+        <div class="form-container">
+          <div class="input-group">
+            <label>Social Media Link / Username <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-link"></i>
+              <input type="text" id="link-input" placeholder="e.g., https://instagram.com/username">
+            </div>
+          </div>
+          <div class="input-group">
+            <label>Email Address</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-envelope"></i>
+              <input type="email" id="email-input" placeholder="For order updates (Optional)">
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-btn" id="btn-next-to-3">
+          Proceed to Payment <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- ================= PAGE 3 ================= -->
+      <div class="page" id="page3">
+        <div class="view-header">
+          <button class="back-btn" id="btn-back-to-2"><i class="fa-solid fa-chevron-left"></i></button>
+          <h2 class="view-title">Secure Checkout</h2>
+        </div>
+
+        <div class="order-summary">
+          <div class="summary-header">Order Summary</div>
+          <div class="summary-row">
+            <span><i class="fa-solid fa-tag"></i> Service</span>
+            <span id="sum-service" class="sum-value">Instagram Followers</span>
+          </div>
+          <div class="summary-row">
+            <span><i class="fa-solid fa-boxes-stacked"></i> Package</span>
+            <span id="sum-qty" class="sum-value">1,000 units</span>
+          </div>
+          <div class="summary-row">
+            <span><i class="fa-solid fa-link"></i> Target Account</span>
+            <span id="sum-link" class="sum-value truncate">@username</span>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-row total-row">
+            <span>Total Payable</span>
+            <span id="sum-total" class="sum-total">₹99</span>
+          </div>
+        </div>
+
+        <h3 class="section-title">Select Payment Method</h3>
+        <div class="payment-grid" id="payment-grid">
+          <!-- <div class="pay-method" data-method="UPI">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" class="pay-logo upi-logo">
+            <span>UPI App</span>
+          </div> -->
+          <!-- <div class="pay-method" data-method="Card">
+            <i class="fa-regular fa-credit-card pay-icon"></i>
+            <span>Card</span>
+          </div>  -->
+          <div class="pay-method active" data-method="Paytm">
+            <div class="pay-icon" style="color: #00BAF2;"><i class="fa-solid fa-wallet"></i></div>
+            <span>Pay QR</span>
+          </div>
+          <!-- <div class="pay-method" data-method="Crypto">
+            <i class="fa-brands fa-bitcoin pay-icon crypto-color"></i>
+            <span>Crypto</span>
+          </div> -->
+        </div>
+
+        <!-- Payment Details Forms -->
+        <div class="form-container hidden" id="upi-section">
+          <div style="text-align: center; margin-bottom: 15px;">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Scan to Pay via UPI</p>
+            <img id="upi-qr" src="" alt="UPI QR Code" style="width: 150px; height: 150px; border-radius: 12px; border: 2px solid var(--primary); padding: 4px; background: white;">
+          </div>
+          <div style="text-align: center; margin-bottom: 20px;">
+            <p style="font-size: 12px; color: var(--text-muted);">Or Pay to UPI ID:</p>
+            <strong id="admin-upi-disp" style="color:white; user-select:all; font-size: 16px; display: inline-block; padding: 6px 12px; background: rgba(79, 70, 229, 0.2); border-radius: 6px; margin-top: 6px; border: 1px solid rgba(79, 70, 229, 0.5);">admin@upi</strong>
+          </div>
+          <div class="input-group">
+            <label>Payment UTR / Reference No. <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-receipt"></i>
+              <input type="text" id="upi-ref-input" placeholder="12 digit UTR number">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-container hidden" id="card-section" style="text-align: center;">
+          <i class="fa-regular fa-credit-card" style="font-size: 40px; color: var(--primary); margin-bottom: 10px;"></i>
+          <p style="font-size: 14px; margin-bottom: 12px; color: var(--text-muted);">Proceed to secure gateway to pay via Card.</p>
+          <a href="#" id="card-payment-link" target="_blank" class="secondary-btn" style="text-decoration:none; display:inline-block; margin-bottom: 10px;">Open Gateway <i class="fa-solid fa-external-link-alt"></i></a>
+          <div class="input-group" style="text-align: left;">
+            <label>Enter Reference Number after payment</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-hashtag"></i>
+              <input type="text" id="card-input" placeholder="Receipt / Reference No.">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-container" id="paytm-section">
+          <div style="text-align: center; margin-bottom: 15px;">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Scan Pay QR</p>
+            <div id="qr-container" style="position: relative; display: inline-block;">
+              <img id="paytm-qr" src="" alt="Pay QR Code" style="width: 150px; height: 150px; border-radius: 12px; border: 2px solid #00BAF2; padding: 4px; background: white; transition: 0.3s;">
+              <div id="qr-expired-overlay" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ef4444; border: 2px solid #ef4444; backdrop-filter: blur(4px);">
+                <i class="fa-solid fa-circle-xmark" style="font-size: 32px; margin-bottom: 8px;"></i>
+                <span style="font-size: 12px; font-weight: 600;">EXPIRED</span>
+              </div>
+            </div>
+            <p id="qr-timer" style="font-size: 14px; color: #10b981; font-weight: 600; margin-top: 10px; font-family: monospace; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <i class="fa-regular fa-clock"></i> <span id="timer-text">05:00</span>
+            </p>
+          </div>
+
+          <div class="input-group">
+            <label>12-Digit UTR Number <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-receipt"></i>
+              <input type="text" id="paytm-ref-input" placeholder="e.g. 123456789012" maxlength="12" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12);">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-container hidden" id="crypto-section">
+          <div style="text-align: center; margin-bottom: 15px;">
+             <i class="fa-brands fa-bitcoin crypto-color" style="font-size: 40px; margin-bottom: 10px;"></i>
+             <p style="font-size: 13px; margin-bottom: 4px; color: var(--text-muted);">Send exactly to this address:</p>
+             <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-family: monospace; border: 1px solid rgba(255,255,255,0.1); word-break: break-all; margin-bottom: 8px;">
+               <strong id="admin-crypto-addr-disp" style="color:white; user-select:all;">-</strong>
+             </div>
+             <p style="font-size: 11px; color: var(--text-muted);">Network: <strong id="admin-crypto-net-disp" style="color:white;">-</strong></p>
+          </div>
+          <div class="input-group">
+            <label>Transaction Hash (TxID)</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-link"></i>
+              <input type="text" id="crypto-input" placeholder="e.g., 0xabc123...">
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-btn glow-btn" id="btn-place-order">
+          <span class="btn-text">Pay Now Securely</span>
+          <i class="fa-solid fa-lock"></i>
+          <div class="loader hidden"></div>
+        </button>
+
+        <div class="trust-footer">
+          <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> 256-bit Secure</div>
+          <div class="trust-item"><i class="fa-solid fa-bolt"></i> Instant Start</div>
+          <div class="trust-item"><i class="fa-solid fa-headset"></i> 24/7 Support</div>
+        </div>
+
+      </div>
+
+      <!-- ================= PAGE ORDERS ================= -->
+      <div class="page" id="page-orders">
+        <div class="view-header" style="margin-bottom: 20px;">
+          <h2 class="view-title"><i class="fa-solid fa-box-open"></i> Active Orders</h2>
+        </div>
+        <div id="orders-list-container" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Orders will be dynamically injected here -->
+        </div>
+      </div>
+
+      <!-- ================= PAGE HISTORY ================= -->
+      <div class="page" id="page-history">
+        <div class="view-header" style="margin-bottom: 20px;">
+          <h2 class="view-title"><i class="fa-solid fa-clock-rotate-left"></i> Order History</h2>
+        </div>
+        <div id="history-list-container" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- History will be dynamically injected here -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+      <div class="nav-item active" data-tab="home" onclick="switchTab('home')">
+        <i class="fa-solid fa-house"></i>
+        <span>Home</span>
+      </div>
+      <div class="nav-item" data-tab="orders" onclick="switchTab('orders')">
+        <i class="fa-solid fa-box"></i>
+        <span>Orders</span>
+      </div>
+      <div class="nav-item" data-tab="history" onclick="switchTab('history')">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>History</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- SUCCESS SCREEN -->
+  <div class="success-screen hidden" id="success-screen">
+    <div class="confetti-container" id="confetti"></div>
+    <div class="success-card" style="position: relative;">
+      <button class="back-btn" id="btn-success-back" style="position: absolute; top: 15px; left: 15px; border: none; background: rgba(255,255,255,0.05);"><i class="fa-solid fa-chevron-left"></i></button>
+      
+      <div class="success-icon-large" style="margin-top: 10px;">
+        <i class="fa-regular fa-circle-check"></i>
+      </div>
+      <h1 class="gradient-text">Order Confirmed!</h1>
+      <p class="success-desc">Awesome! Your order is placed securely and processing has begun.<br><span style="color: #10b981; font-weight: 500;">Your order will be completed within 24 hours.</span></p>
+      
+      <div class="receipt">
+        <div class="receipt-row">
+          <span>Order ID</span>
+          <strong id="receipt-id">#ORD-99214</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Service</span>
+          <strong id="receipt-service">Instagram Followers</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Quantity</span>
+          <strong id="receipt-qty">1,000</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Amount Paid</span>
+          <strong id="receipt-paid" class="highlight-amt">₹99</strong>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="secondary-btn w-100" id="btn-track-order" style="padding: 12px; font-size: 13px;">
+          <i class="fa-solid fa-rotate-right"></i> Place Another
+        </button>
+        <button class="primary-btn w-100" id="btn-go-home" style="padding: 12px; font-size: 13px;">
+          <i class="fa-solid fa-house"></i> Back to Home
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

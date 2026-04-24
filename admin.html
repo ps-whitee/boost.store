@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - SocialBoost</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <nav class="navbar">
+    <div class="nav-brand">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>SocialBoost Admin</span>
+    </div>
+    <div class="nav-links">
+      <a href="social_media_marketplace.html" target="_blank">View Live Site <i class="fa-solid fa-external-link-alt"></i></a>
+    </div>
+  </nav>
+
+  <div class="admin-container">
+    <div class="grid-layout">
+      <!-- SETTINGS COLUMN -->
+      <div class="column-left">
+        
+        <!-- Payment Settings -->
+        <div class="card">
+          <div class="card-header">
+            <i class="fa-solid fa-money-bill-wave"></i> Payment Configuration
+          </div>
+          <div class="card-body">
+            <!-- UPI Settings -->
+            <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+              <h4 style="margin-bottom: 12px; font-size: 13px; color: var(--primary);"><i class="fa-solid fa-mobile-screen"></i> UPI Details</h4>
+              <div class="input-group">
+                <label>Admin UPI ID</label>
+                <input type="text" id="admin-upi-input" placeholder="admin@upi">
+              </div>
+              <div class="input-group">
+                <label>UPI QR Code (Image URL or Upload)</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                  <input type="text" id="admin-qr-input" placeholder="https://link-to-qr.com/image.png" style="flex:1;">
+                  <label style="cursor:pointer; background:var(--primary); color:white; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap;">
+                    <i class="fa-solid fa-upload"></i> Upload
+                    <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'admin-qr-input')">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button class="save-btn" id="btn-save-payment"><i class="fa-solid fa-save"></i> Save Global UPI Default</button>
+          </div>
+        </div>
+
+        <!-- Pricing Settings -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <i class="fa-solid fa-tags"></i> Packages Configuration
+          </div>
+          <div class="card-body">
+            
+            <!-- Service Tabs -->
+            <div class="service-tabs-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border);">
+              <button class="svc-tab active" data-svc="Instagram Followers"><i class="fa-brands fa-instagram"></i> IG Followers</button>
+              <button class="svc-tab" data-svc="Instagram Likes"><i class="fa-brands fa-instagram"></i> IG Likes</button>
+              <button class="svc-tab" data-svc="YouTube Subscribers"><i class="fa-brands fa-youtube"></i> YT Subs</button>
+              <button class="svc-tab" data-svc="YouTube Views"><i class="fa-brands fa-youtube"></i> YT Views</button>
+              <button class="svc-tab" data-svc="Facebook Followers"><i class="fa-brands fa-facebook"></i> FB Followers</button>
+              <button class="svc-tab" data-svc="Twitter Followers"><i class="fa-brands fa-twitter"></i> X Followers</button>
+              <button class="svc-tab" data-svc="TikTok Followers"><i class="fa-brands fa-tiktok"></i> TK Followers</button>
+              <button class="svc-tab" data-svc="TikTok Views"><i class="fa-brands fa-tiktok"></i> TK Views</button>
+            </div>
+            
+            <h4 id="current-svc-title" style="margin-bottom:16px; color:var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Editing: Instagram Followers</h4>
+
+            <!-- Service level payment options have been removed -->
+
+            <h4 style="margin-bottom: 16px; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 8px;"><i class="fa-solid fa-box-open"></i> Package Timiers / Prices</h4>
+
+              <!-- Starter -->
+              <div class="pkg-admin-box">
+                <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-main);">Starter Pack</h4>
+                <div style="display:flex; flex-direction: column; gap:10px;">
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="number" id="price-starter" placeholder="Price (₹)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 2; display:flex; gap:10px;">
+                        <input type="text" id="qr-starter" placeholder="Specific Pay QR Link (Optional)" style="flex:1;">
+                        <label style="cursor:pointer; background:var(--primary); color:white; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap;">
+                          <i class="fa-solid fa-upload"></i>
+                          <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-starter')">
+                        </label>
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="card-starter" placeholder="Specific Stripe/Card Link (Optional)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="phone-starter" placeholder="Pay QR Phone / UPI Number">
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptonet-starter" placeholder="Crypto Network (e.g. TRC20)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptoaddr-starter" placeholder="Crypto Wallet Address">
+                      </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Popular -->
+              <div class="pkg-admin-box">
+                <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-main);">Popular Pack</h4>
+                <div style="display:flex; flex-direction: column; gap:10px;">
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="number" id="price-popular" placeholder="Price (₹)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 2; display:flex; gap:10px;">
+                        <input type="text" id="qr-popular" placeholder="Specific Pay QR Link (Optional)" style="flex:1;">
+                        <label style="cursor:pointer; background:var(--primary); color:white; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap;">
+                          <i class="fa-solid fa-upload"></i>
+                          <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-popular')">
+                        </label>
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="card-popular" placeholder="Specific Stripe/Card Link (Optional)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="phone-popular" placeholder="Pay QR Phone / UPI Number">
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptonet-popular" placeholder="Crypto Network (e.g. TRC20)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptoaddr-popular" placeholder="Crypto Wallet Address">
+                      </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pro -->
+              <div class="pkg-admin-box">
+                <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-main);">Pro Pack</h4>
+                <div style="display:flex; flex-direction: column; gap:10px;">
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="number" id="price-pro" placeholder="Price (₹)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 2; display:flex; gap:10px;">
+                        <input type="text" id="qr-pro" placeholder="Specific Pay QR Link (Optional)" style="flex:1;">
+                        <label style="cursor:pointer; background:var(--primary); color:white; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap;">
+                          <i class="fa-solid fa-upload"></i>
+                          <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-pro')">
+                        </label>
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="card-pro" placeholder="Specific Stripe/Card Link (Optional)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="phone-pro" placeholder="Pay QR Phone / UPI Number">
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptonet-pro" placeholder="Crypto Network (e.g. TRC20)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptoaddr-pro" placeholder="Crypto Wallet Address">
+                      </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Viral -->
+              <div class="pkg-admin-box">
+                <h4 style="margin-bottom: 8px; font-size: 13px; color: var(--text-main);">Viral Pack</h4>
+                <div style="display:flex; flex-direction: column; gap:10px;">
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="number" id="price-viral" placeholder="Price (₹)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 2; display:flex; gap:10px;">
+                        <input type="text" id="qr-viral" placeholder="Specific Pay QR Link (Optional)" style="flex:1;">
+                        <label style="cursor:pointer; background:var(--primary); color:white; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap;">
+                          <i class="fa-solid fa-upload"></i>
+                          <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-viral')">
+                        </label>
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="card-viral" placeholder="Specific Stripe/Card Link (Optional)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="phone-viral" placeholder="Pay QR Phone / UPI Number">
+                      </div>
+                  </div>
+                  <div style="display:flex; gap: 10px;">
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptonet-viral" placeholder="Crypto Network (e.g. TRC20)">
+                      </div>
+                      <div class="input-group mb-0" style="flex: 1;">
+                        <input type="text" id="cryptoaddr-viral" placeholder="Crypto Wallet Address">
+                      </div>
+                  </div>
+                </div>
+              </div>
+
+            <button class="save-btn mt-4" id="btn-save-prices"><i class="fa-solid fa-save"></i> Save Configurations</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ORDERS COLUMN -->
+      <div class="column-right">
+        
+        <!-- Earnings Widget -->
+        <div class="card mb-4" style="margin-bottom: 20px; background: linear-gradient(135deg, #4f46e5 0%, #ec4899 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);">
+          <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; padding: 24px;">
+            <div>
+              <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px; font-weight: 500;">Total Verified Earnings</div>
+              <div id="total-earnings" style="font-size: 32px; font-weight: 700;">₹0</div>
+            </div>
+            <div>
+              <i class="fa-solid fa-wallet" style="font-size: 40px; opacity: 0.5;"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header flex-between">
+            <div><i class="fa-solid fa-list-check"></i> Recent Orders</div>
+            <button class="refresh-btn" id="btn-refresh-orders"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+          </div>
+          
+          <div class="table-container">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Date</th>
+                  <th>Service</th>
+                  <th>Target Link</th>
+                  <th>Amount</th>
+                  <th>Payment</th>
+                </tr>
+              </thead>
+              <tbody id="orders-tbody">
+                <!-- Data will be populated here -->
+              </tbody>
+            </table>
+            
+            <div id="no-orders" class="empty-state hidden">
+              <i class="fa-solid fa-inbox"></i>
+              <p>No orders received yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
