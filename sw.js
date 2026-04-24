@@ -1,4 +1,4 @@
-const CACHE_NAME = 'booststore-v3';
+const CACHE_NAME = 'booststore-v4';
 const APP_ASSETS = [
   '/',
   '/social_media_marketplace.html',
