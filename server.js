@@ -111,7 +111,7 @@ app.post('/api/settings', (req, res) => {
 });
 
 // Fallback to social_media_marketplace.html
-app.get('/(.*)', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'social_media_marketplace.html'));
 });
 
