@@ -138,6 +138,9 @@ function loadConfigs() {
 // Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
 
+  // Set initial history state
+  history.replaceState({ step: 1, type: 'step' }, '', '#home');
+
   // PWA Service Worker Registration
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -236,6 +239,31 @@ const state = {
   platform: 'instagram',
   pkgId: 'starter'
 };
+
+let isNavigatingFromHistory = false;
+
+window.addEventListener('popstate', (e) => {
+  isNavigatingFromHistory = true;
+  
+  // Close success screen if it was open
+  const successScreen = document.getElementById('success-screen');
+  if (successScreen && !successScreen.classList.contains('hidden')) {
+    successScreen.classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+  }
+
+  if (e.state) {
+    if (e.state.type === 'step') {
+      navigate(e.state.step);
+    } else if (e.state.type === 'tab') {
+      switchTab(e.state.tab);
+    }
+  } else {
+    navigate(1);
+  }
+  
+  setTimeout(() => { isNavigatingFromHistory = false; }, 10);
+});
 
 // DOM Elements
 const pages = [document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3')];
@@ -427,6 +455,10 @@ function selectPayment(element) {
 }
 
 function navigate(stepNumber) {
+  if (!isNavigatingFromHistory) {
+    history.pushState({ step: stepNumber, type: 'step' }, '', '#step' + stepNumber);
+  }
+
   // Header visibility
   const header = document.querySelector('.header');
   if (header) {
@@ -504,6 +536,10 @@ function navigate(stepNumber) {
 }
 
 function switchTab(tabName) {
+  if (!isNavigatingFromHistory) {
+    history.pushState({ tab: tabName, type: 'tab' }, '', '#' + tabName);
+  }
+
   clearInterval(qrTimerInterval);
   
   // Update Nav Active State
@@ -720,6 +756,10 @@ function placeOrder() {
       document.getElementById('receipt-service').textContent = state.service;
       document.getElementById('receipt-qty').textContent = state.qty;
       document.getElementById('receipt-paid').textContent = '₹' + state.price;
+
+      if (!isNavigatingFromHistory) {
+        history.pushState({ type: 'success' }, '', '#success');
+      }
 
       createConfetti();
       
