@@ -1,5 +1,20 @@
 let globalData = { settings: {}, packages: {}, orders: [] };
 let currentAdminSelectedSvc = 'Instagram Followers';
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  // Auto refresh every 15 seconds silently
+  autoRefreshInterval = setInterval(async () => {
+    try {
+      const response = await adminFetch('/api/admin/data');
+      globalData = await response.json();
+      loadOrders(); // Only reload orders dynamically
+    } catch (error) {
+      console.error('Auto refresh failed', error);
+    }
+  }, 15000);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   bindStaticEvents();
@@ -59,6 +74,7 @@ async function initializeDashboard() {
   globalData = await response.json();
   loadConfigs();
   loadOrders();
+  startAutoRefresh();
 }
 
 function showLogin(message = '') {
@@ -118,6 +134,8 @@ async function handleAdminLogin(event) {
 }
 
 async function handleAdminLogout() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+
   try {
     await fetch('/api/admin/logout', { method: 'POST' });
   } catch (error) {
