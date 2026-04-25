@@ -294,6 +294,7 @@ function loadOrders() {
     const safeQty = escapeHtml(order.qty || '0');
     const safeLinkText = escapeHtml(truncate(order.link || '', 25));
     const safeEmail = escapeHtml(order.email || 'N/A');
+    const href = escapeAttribute(normalizeLink(order.link || ''));
 
     const tr = document.createElement('tr');
     tr.innerHTML = `

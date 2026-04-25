@@ -1,4 +1,4 @@
-// --- BACKEND API INTEGRATION ---
+﻿// --- BACKEND API INTEGRATION ---
 const PUBLIC_DATA_CACHE_KEY = 'booststore_public_data_v1';
 const DEFAULT_PUBLIC_DATA = {
   settings: {
@@ -302,7 +302,7 @@ function loadConfigs() {
     const pkgId = row.dataset.pkgId;
     if (currentSvcPackages && currentSvcPackages[pkgId]) {
       row.dataset.price = currentSvcPackages[pkgId].price;
-      row.querySelector('.price-text').textContent = '₹' + currentSvcPackages[pkgId].price;
+      row.querySelector('.price-text').textContent = '\u20B9' + currentSvcPackages[pkgId].price;
     }
   });
 
@@ -346,6 +346,12 @@ window.addEventListener('online', () => {
 // PWA Install Prompt Logic
 let deferredPrompt;
 const installBtn = document.getElementById('install-app-btn');
+const profileMenuBtn = document.getElementById('profile-menu-btn');
+const profileMenu = document.getElementById('profile-menu');
+const profileMenuEmail = document.getElementById('profile-menu-email');
+const profileMenuAction = document.getElementById('profile-menu-action');
+const profileMenuActionText = document.getElementById('profile-menu-action-text');
+const profileMenuActionIcon = profileMenuAction ? profileMenuAction.querySelector('i') : null;
 
 function isInstalledApp() {
   const isStandaloneDisplay = window.matchMedia('(display-mode: standalone)').matches;
@@ -460,6 +466,53 @@ const authFooterNote = document.getElementById('auth-footer-note');
 const authTabLogin = document.getElementById('auth-tab-login');
 const authTabSignup = document.getElementById('auth-tab-signup');
 const authSubmitButton = document.getElementById('btn-auth-submit');
+
+function setProfileMenuOpen(isOpen) {
+  if (!profileMenu || !profileMenuBtn) {
+    return;
+  }
+
+  profileMenu.classList.toggle('hidden', !isOpen);
+  profileMenuBtn.setAttribute('aria-expanded', String(Boolean(isOpen)));
+}
+
+function syncProfileMenu() {
+  if (!profileMenuEmail || !profileMenuAction || !profileMenuActionText) {
+    return;
+  }
+
+  const email = currentUser && currentUser.email ? currentUser.email : 'Not signed in';
+  const isLoggedIn = Boolean(currentUser);
+
+  profileMenuEmail.textContent = email;
+  profileMenuActionText.textContent = isLoggedIn ? 'Logout' : 'Sign In';
+  profileMenuAction.classList.toggle('danger', isLoggedIn);
+
+  if (profileMenuActionIcon) {
+    profileMenuActionIcon.className = isLoggedIn
+      ? 'fa-solid fa-right-from-bracket'
+      : 'fa-solid fa-right-to-bracket';
+  }
+
+  profileMenuBtn.title = isLoggedIn ? email : 'Open profile';
+}
+
+async function handleUserLogout() {
+  try {
+    if (firebaseAuth) {
+      await firebaseAuth.signOut();
+    } else {
+      await fetch('/api/users/logout', { method: 'POST' });
+    }
+
+    clearCurrentUserState();
+    setProfileMenuOpen(false);
+    showToast('Logged out');
+    switchTab('home');
+  } catch (error) {
+    showToast('Failed to log out.', 'error');
+  }
+}
 
 function setAuthTabState(button, isActive) {
   button.style.background = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.04)';
@@ -604,20 +657,44 @@ authSubmitButton.addEventListener('click', handleAuthSubmit);
 
 setAuthMode('login');
 
-document.getElementById('btn-logout').addEventListener('click', async () => {
-  try {
-    if (firebaseAuth) {
-      await firebaseAuth.signOut();
-    } else {
-      await fetch('/api/users/logout', { method: 'POST' });
+if (profileMenuBtn && profileMenu) {
+  profileMenuBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    setProfileMenuOpen(profileMenu.classList.contains('hidden'));
+  });
+}
+
+if (profileMenu) {
+  profileMenu.addEventListener('click', event => {
+    event.stopPropagation();
+  });
+}
+
+if (profileMenuAction) {
+  profileMenuAction.addEventListener('click', () => {
+    setProfileMenuOpen(false);
+
+    if (currentUser) {
+      handleUserLogout();
+      return;
     }
-    clearCurrentUserState();
-    showToast('Logged out');
-    switchTab('home');
-  } catch (error) {
-    showToast('Failed to log out.', 'error');
+
+    pendingAuthAction = null;
+    openAuthModal('login');
+  });
+}
+
+document.addEventListener('click', () => {
+  setProfileMenuOpen(false);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    setProfileMenuOpen(false);
   }
 });
+
+syncProfileMenu();
 
 function requireAuth(callback) {
   if (currentUser) {
@@ -625,15 +702,6 @@ function requireAuth(callback) {
   } else {
     pendingAuthAction = callback;
     openAuthModal('login');
-  }
-}
-
-function updateWalletUI() {
-  if (currentUser) {
-    const balDisp = document.getElementById('checkout-wallet-balance');
-    const mainBalDisp = document.getElementById('wallet-balance-main');
-    if(balDisp) balDisp.textContent = '₹' + currentUser.walletBalance;
-    if(mainBalDisp) mainBalDisp.textContent = '₹' + currentUser.walletBalance;
   }
 }
 
@@ -771,7 +839,7 @@ function selectService(cardElement) {
       const pkgId = row.dataset.pkgId;
       if (currentSvcPackages[pkgId]) {
         row.dataset.price = currentSvcPackages[pkgId].price;
-        row.querySelector('.price-text').textContent = '₹' + currentSvcPackages[pkgId].price;
+        row.querySelector('.price-text').textContent = '\u20B9' + currentSvcPackages[pkgId].price;
       }
     });
     
@@ -874,6 +942,8 @@ function navigate(stepNumber) {
     history.pushState({ step: stepNumber, type: 'step' }, '', '#step' + stepNumber);
   }
 
+  setProfileMenuOpen(false);
+
   // Header visibility
   const header = document.querySelector('.header');
   if (header) {
@@ -924,7 +994,7 @@ function navigate(stepNumber) {
     document.getElementById('sum-service').textContent = state.service;
     document.getElementById('sum-qty').textContent = state.qty + ' units';
     document.getElementById('sum-link').textContent = link;
-    document.getElementById('sum-total').textContent = '₹' + state.price;
+    document.getElementById('sum-total').textContent = '\u20B9' + state.price;
     
     // Ensure wallet balance reflects immediately
     updateWalletUI();
@@ -949,6 +1019,7 @@ function switchTab(tabName) {
     history.pushState({ tab: tabName, type: 'tab' }, '', '#' + tabName);
   }
 
+  setProfileMenuOpen(false);
   clearInterval(qrTimerInterval);
   
   // Update Nav Active State
@@ -1151,7 +1222,7 @@ function placeOrder() {
       document.getElementById('receipt-id').textContent = orderId;
       document.getElementById('receipt-service').textContent = state.service;
       document.getElementById('receipt-qty').textContent = state.qty;
-      document.getElementById('receipt-paid').textContent = '₹' + state.price;
+      document.getElementById('receipt-paid').textContent = '\u20B9' + state.price;
 
       if (!isNavigatingFromHistory) {
         history.pushState({ type: 'success' }, '', '#success');
@@ -1198,8 +1269,9 @@ function updateWalletUI() {
   const balance = currentUser ? currentUser.walletBalance : 0;
   const balDisp = document.getElementById('checkout-wallet-balance');
   const mainBalDisp = document.getElementById('wallet-balance-main');
-  if (balDisp) balDisp.textContent = 'â‚¹' + balance;
-  if (mainBalDisp) mainBalDisp.textContent = 'â‚¹' + balance;
+  if (balDisp) balDisp.textContent = '\u20B9' + balance;
+  if (mainBalDisp) mainBalDisp.textContent = '\u20B9' + balance;
+  syncProfileMenu();
 }
 
 // Custom Toast Notification System
@@ -1255,3 +1327,4 @@ function createConfetti() {
     animation.onfinish = () => conf.remove();
   }
 }
+
