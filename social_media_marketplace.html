@@ -34,6 +34,36 @@
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
 
+  <!-- User Auth Modal -->
+  <div class="auth-modal hidden" id="auth-modal" style="position: fixed; inset: 0; background: rgba(15,23,42,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="auth-card" style="background: var(--card-bg); padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-color);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <i class="fa-solid fa-user-lock" style="font-size: 40px; color: var(--primary); margin-bottom: 10px;"></i>
+        <h2 style="color: white;">Account Access</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Sign in or create your account with Firebase email/password.</p>
+      </div>
+      <div class="input-group">
+        <label>Email Address</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-envelope"></i>
+          <input type="email" id="auth-email" autocomplete="email" placeholder="Enter your email">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="auth-password" autocomplete="current-password" placeholder="Enter your password">
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="primary-btn w-100" id="btn-login" style="padding: 12px; font-size: 14px;">Login</button>
+        <button class="secondary-btn w-100" id="btn-register" style="padding: 12px; font-size: 14px;">Sign Up</button>
+      </div>
+      <button class="back-btn" id="btn-close-auth" style="position: absolute; top: 15px; right: 15px; border: none; background: rgba(255,255,255,0.05);"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
   <div class="app-container" id="main-app">
     
     <header class="header">
@@ -238,71 +268,64 @@
           </div>
         </div>
 
-        <h3 class="section-title">Select Payment Method</h3>
+        <h3 class="section-title">Wallet Payment</h3>
+        <div class="wallet-pay-card" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 20px;">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Available Balance</p>
+          <div id="checkout-wallet-balance" style="font-size: 24px; font-weight: 700; color: white;">₹0</div>
+          <p id="checkout-wallet-error" class="hidden" style="color: #ef4444; font-size: 12px; margin-top: 8px; font-weight: 500;"><i class="fa-solid fa-triangle-exclamation"></i> Insufficient balance. Please add funds to your wallet.</p>
+        </div>
+        <button class="primary-btn glow-btn" id="btn-place-order">
+          <span class="btn-text">Pay with Wallet & Order</span>
+          <i class="fa-solid fa-wallet"></i>
+          <div class="loader hidden"></div>
+        </button>
+
+        <div class="trust-footer">
+          <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> 256-bit Secure</div>
+          <div class="trust-item"><i class="fa-solid fa-bolt"></i> Instant Start</div>
+          <div class="trust-item"><i class="fa-solid fa-headset"></i> 24/7 Support</div>
+        </div>
+
+      </div>
+
+      <!-- ================= PAGE WALLET ================= -->
+      <div class="page" id="page-wallet">
+        <div class="view-header" style="margin-bottom: 20px;">
+          <h2 class="view-title"><i class="fa-solid fa-wallet"></i> My Wallet</h2>
+          <button class="outline-btn" id="btn-logout" style="padding: 6px 12px; font-size: 12px; border-radius: 8px;"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+        </div>
+        
+        <div class="wallet-card" style="background: linear-gradient(135deg, #0f172a 0%, #3b82f6 100%); padding: 24px; border-radius: 16px; margin-bottom: 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);">
+          <div>
+            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px;">Available Balance</div>
+            <div id="wallet-balance-main" style="font-size: 32px; font-weight: 700;">₹0</div>
+          </div>
+          <i class="fa-solid fa-coins" style="font-size: 40px; opacity: 0.5;"></i>
+        </div>
+
+        <h3 class="section-title">Add Funds</h3>
+        <div class="input-group" style="margin-bottom: 15px;">
+          <label>Amount to Add (₹) <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-indian-rupee-sign"></i>
+            <input type="number" id="add-fund-amount" placeholder="e.g. 500">
+          </div>
+        </div>
+
         <div class="payment-grid" id="payment-grid">
-          <!-- <div class="pay-method" data-method="UPI">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" class="pay-logo upi-logo">
-            <span>UPI App</span>
-          </div> -->
-          <!-- <div class="pay-method" data-method="Card">
-            <i class="fa-regular fa-credit-card pay-icon"></i>
-            <span>Card</span>
-          </div>  -->
           <div class="pay-method active" data-method="Paytm">
-            <div class="pay-icon" style="color: #00BAF2;"><i class="fa-solid fa-wallet"></i></div>
+            <div class="pay-icon" style="color: #00BAF2;"><i class="fa-solid fa-qrcode"></i></div>
             <span>Pay QR</span>
           </div>
-          <!-- <div class="pay-method" data-method="Crypto">
-            <i class="fa-brands fa-bitcoin pay-icon crypto-color"></i>
-            <span>Crypto</span>
-          </div> -->
         </div>
 
-        <!-- Payment Details Forms -->
-        <div class="form-container hidden" id="upi-section">
-          <div style="text-align: center; margin-bottom: 15px;">
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Scan to Pay via UPI</p>
-            <img id="upi-qr" src="" alt="UPI QR Code" style="width: 150px; height: 150px; border-radius: 12px; border: 2px solid var(--primary); padding: 4px; background: white;">
-          </div>
-          <div style="text-align: center; margin-bottom: 20px;">
-            <p style="font-size: 12px; color: var(--text-muted);">Or Pay to UPI ID:</p>
-            <strong id="admin-upi-disp" style="color:white; user-select:all; font-size: 16px; display: inline-block; padding: 6px 12px; background: rgba(79, 70, 229, 0.2); border-radius: 6px; margin-top: 6px; border: 1px solid rgba(79, 70, 229, 0.5);">admin@upi</strong>
-          </div>
-          <div class="input-group">
-            <label>Payment UTR / Reference No. <span class="required">*</span></label>
-            <div class="input-wrapper">
-              <i class="fa-solid fa-receipt"></i>
-              <input type="text" id="upi-ref-input" placeholder="12 digit UTR number">
-            </div>
-          </div>
-        </div>
-
-        <div class="form-container hidden" id="card-section" style="text-align: center;">
-          <i class="fa-regular fa-credit-card" style="font-size: 40px; color: var(--primary); margin-bottom: 10px;"></i>
-          <p style="font-size: 14px; margin-bottom: 12px; color: var(--text-muted);">Proceed to secure gateway to pay via Card.</p>
-          <a href="#" id="card-payment-link" target="_blank" class="secondary-btn" style="text-decoration:none; display:inline-block; margin-bottom: 10px;">Open Gateway <i class="fa-solid fa-external-link-alt"></i></a>
-          <div class="input-group" style="text-align: left;">
-            <label>Enter Reference Number after payment</label>
-            <div class="input-wrapper">
-              <i class="fa-solid fa-hashtag"></i>
-              <input type="text" id="card-input" placeholder="Receipt / Reference No.">
-            </div>
-          </div>
-        </div>
-
+        <!-- Add Funds Details Forms -->
         <div class="form-container" id="paytm-section">
           <div style="text-align: center; margin-bottom: 15px;">
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Scan Pay QR</p>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Scan QR to Add Funds</p>
             <div id="qr-container" style="position: relative; display: inline-block;">
               <img id="paytm-qr" src="" alt="Pay QR Code" style="width: 150px; height: 150px; border-radius: 12px; border: 2px solid #00BAF2; padding: 4px; background: white; transition: 0.3s;">
-              <div id="qr-expired-overlay" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ef4444; border: 2px solid #ef4444; backdrop-filter: blur(4px);">
-                <i class="fa-solid fa-circle-xmark" style="font-size: 32px; margin-bottom: 8px;"></i>
-                <span style="font-size: 12px; font-weight: 600;">EXPIRED</span>
-              </div>
             </div>
-            <p id="qr-timer" style="font-size: 14px; color: #10b981; font-weight: 600; margin-top: 10px; font-family: monospace; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <i class="fa-regular fa-clock"></i> <span id="timer-text">05:00</span>
-            </p>
           </div>
 
           <div class="input-group">
@@ -314,35 +337,11 @@
           </div>
         </div>
 
-        <div class="form-container hidden" id="crypto-section">
-          <div style="text-align: center; margin-bottom: 15px;">
-             <i class="fa-brands fa-bitcoin crypto-color" style="font-size: 40px; margin-bottom: 10px;"></i>
-             <p style="font-size: 13px; margin-bottom: 4px; color: var(--text-muted);">Send exactly to this address:</p>
-             <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-family: monospace; border: 1px solid rgba(255,255,255,0.1); word-break: break-all; margin-bottom: 8px;">
-               <strong id="admin-crypto-addr-disp" style="color:white; user-select:all;">-</strong>
-             </div>
-             <p style="font-size: 11px; color: var(--text-muted);">Network: <strong id="admin-crypto-net-disp" style="color:white;">-</strong></p>
-          </div>
-          <div class="input-group">
-            <label>Transaction Hash (TxID)</label>
-            <div class="input-wrapper">
-              <i class="fa-solid fa-link"></i>
-              <input type="text" id="crypto-input" placeholder="e.g., 0xabc123...">
-            </div>
-          </div>
-        </div>
-
-        <button class="primary-btn glow-btn" id="btn-place-order">
-          <span class="btn-text">Pay Now Securely</span>
-          <i class="fa-solid fa-lock"></i>
+        <button class="primary-btn glow-btn" id="btn-add-funds">
+          <span class="btn-text">Submit Request</span>
+          <i class="fa-solid fa-paper-plane"></i>
           <div class="loader hidden"></div>
         </button>
-
-        <div class="trust-footer">
-          <div class="trust-item"><i class="fa-solid fa-shield-halved"></i> 256-bit Secure</div>
-          <div class="trust-item"><i class="fa-solid fa-bolt"></i> Instant Start</div>
-          <div class="trust-item"><i class="fa-solid fa-headset"></i> 24/7 Support</div>
-        </div>
 
       </div>
 
@@ -377,6 +376,10 @@
       <div class="nav-item" data-tab="orders" onclick="switchTab('orders')">
         <i class="fa-solid fa-box"></i>
         <span>Orders</span>
+      </div>
+      <div class="nav-item" data-tab="wallet" onclick="switchTab('wallet')">
+        <i class="fa-solid fa-wallet"></i>
+        <span>Wallet</span>
       </div>
       <div class="nav-item" data-tab="history" onclick="switchTab('history')">
         <i class="fa-solid fa-clock-rotate-left"></i>
@@ -427,6 +430,8 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -17,6 +17,12 @@ let globalData = getFallbackData();
 let isBackendConnected = false;
 let backendRetryTimer = null;
 let hasShownBackendWarning = false;
+let currentUser = null;
+let firebaseAuth = null;
+let isFirebaseAuthConfigured = false;
+let isFirebaseAuthInitialized = false;
+let firebaseSessionSyncPromise = null;
+let pendingAuthAction = null;
 
 async function initBackend(options = {}) {
   const { silent = false } = options;
@@ -31,6 +37,29 @@ async function initBackend(options = {}) {
     }
 
     globalData = normalizePublicData(await res.json());
+    
+    // FETCH USER SESSION
+    try {
+      const userRes = await fetch('/api/users/me', { cache: 'no-store' });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        currentUser = userData.user;
+        globalData.orders = userData.orders || [];
+        globalData.fundRequests = userData.fundRequests || [];
+        updateWalletUI();
+      } else {
+        currentUser = null;
+        globalData.orders = [];
+        globalData.fundRequests = [];
+        updateWalletUI();
+      }
+    } catch(e) {
+      currentUser = null;
+      globalData.orders = [];
+      globalData.fundRequests = [];
+      updateWalletUI();
+    }
+
     isBackendConnected = true;
     hasShownBackendWarning = false;
     cachePublicData(globalData);
@@ -110,6 +139,155 @@ function getBackendWarningMessage() {
   return 'Server connect nahi ho raha. App preview mode me chal raha hai.';
 }
 
+async function initFirebaseAuth() {
+  if (isFirebaseAuthInitialized) {
+    return isFirebaseAuthConfigured;
+  }
+
+  isFirebaseAuthInitialized = true;
+
+  if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
+    console.warn('Firebase web SDK is not loaded.');
+    return false;
+  }
+
+  try {
+    const response = await fetch('/api/firebase/config', { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error('Failed to load Firebase config');
+    }
+
+    const payload = await response.json();
+
+    if (!payload.enabled || !payload.config) {
+      console.warn('Firebase web auth is not configured on the server.');
+      return false;
+    }
+
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(payload.config);
+    }
+
+    firebaseAuth = window.firebase.auth();
+    isFirebaseAuthConfigured = true;
+
+    firebaseAuth.onAuthStateChanged(async user => {
+      if (user) {
+        try {
+          await syncFirebaseUserSession(user);
+          authModal.classList.add('hidden');
+          await initBackend({ silent: true });
+          runPendingAuthAction();
+        } catch (error) {
+          console.error('Failed to sync Firebase user session', error);
+          showToast(getFirebaseErrorMessage(error), 'error');
+        }
+        return;
+      }
+
+      try {
+        await fetch('/api/users/logout', { method: 'POST' });
+      } catch (error) {
+        console.error('Failed to clear server session', error);
+      }
+
+      clearCurrentUserState();
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Firebase auth initialization failed', error);
+    return false;
+  }
+}
+
+async function ensureFirebaseAuthReady() {
+  const ready = await initFirebaseAuth();
+
+  if (!ready || !firebaseAuth) {
+    showToast('Firebase email/password auth is not configured yet.', 'error');
+    return false;
+  }
+
+  return true;
+}
+
+async function syncFirebaseUserSession(user) {
+  if (!user || !firebaseAuth) {
+    return null;
+  }
+
+  if (firebaseSessionSyncPromise) {
+    return firebaseSessionSyncPromise;
+  }
+
+  firebaseSessionSyncPromise = (async () => {
+    const idToken = await user.getIdToken(true);
+    const response = await fetch('/api/users/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+
+    if (!response.ok) {
+      const payload = await safeJson(response);
+      throw new Error(payload.error || 'Failed to create user session');
+    }
+
+    const payload = await response.json();
+    currentUser = payload.user || null;
+    updateWalletUI();
+    return currentUser;
+  })();
+
+  try {
+    return await firebaseSessionSyncPromise;
+  } finally {
+    firebaseSessionSyncPromise = null;
+  }
+}
+
+function clearCurrentUserState() {
+  currentUser = null;
+  globalData.orders = [];
+  globalData.fundRequests = [];
+  updateWalletUI();
+}
+
+function runPendingAuthAction() {
+  if (typeof pendingAuthAction !== 'function') {
+    return;
+  }
+
+  const action = pendingAuthAction;
+  pendingAuthAction = null;
+  action();
+}
+
+function getFirebaseErrorMessage(error) {
+  switch (error && error.code) {
+    case 'auth/email-already-in-use':
+      return 'This email is already registered. Please log in instead.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Use at least 6 characters.';
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Invalid email or password.';
+    case 'auth/too-many-requests':
+      return 'Too many login attempts. Please try again later.';
+    case 'auth/network-request-failed':
+      return 'Network error while connecting to Firebase.';
+    case 'auth/unauthorized-domain':
+      return 'This domain is not added in Firebase Authorized Domains.';
+    default:
+      return error && error.message ? error.message : 'Authentication failed.';
+  }
+}
+
 function loadConfigs() {
   const settings = globalData.settings || {};
   const packages = globalData.packages || {};
@@ -136,7 +314,7 @@ function loadConfigs() {
 }
 
 // Initialize on load
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
 
   // Set initial history state
   history.replaceState({ step: 1, type: 'step' }, '', '#home');
@@ -153,6 +331,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // Navigation Logic
+  await initFirebaseAuth();
   initBackend();
 });
 
@@ -265,6 +444,131 @@ window.addEventListener('popstate', (e) => {
   setTimeout(() => { isNavigatingFromHistory = false; }, 10);
 });
 
+// User Auth Logic
+const authModal = document.getElementById('auth-modal');
+document.getElementById('btn-close-auth').addEventListener('click', () => {
+  authModal.classList.add('hidden');
+});
+
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+  if (!email || !password) return showToast('Email and password required', 'error');
+
+  try {
+    if (!(await ensureFirebaseAuthReady())) {
+      return;
+    }
+
+    const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+    await syncFirebaseUserSession(credential.user);
+    await initBackend({ silent: true });
+    authModal.classList.add('hidden');
+    document.getElementById('auth-password').value = '';
+    showToast('Logged in successfully!');
+    runPendingAuthAction();
+  } catch (error) {
+    showToast(getFirebaseErrorMessage(error), 'error');
+  }
+});
+
+document.getElementById('btn-register').addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+  if (!email || !password) return showToast('Email and password required', 'error');
+
+  try {
+    if (!(await ensureFirebaseAuthReady())) {
+      return;
+    }
+
+    const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+    await syncFirebaseUserSession(credential.user);
+    await initBackend({ silent: true });
+    authModal.classList.add('hidden');
+    document.getElementById('auth-password').value = '';
+    showToast('Account created successfully!');
+    runPendingAuthAction();
+  } catch (error) {
+    showToast(getFirebaseErrorMessage(error), 'error');
+  }
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  try {
+    if (firebaseAuth) {
+      await firebaseAuth.signOut();
+    } else {
+      await fetch('/api/users/logout', { method: 'POST' });
+    }
+    clearCurrentUserState();
+    showToast('Logged out');
+    switchTab('home');
+  } catch (error) {
+    showToast('Failed to log out.', 'error');
+  }
+});
+
+function requireAuth(callback) {
+  if (currentUser) {
+    callback();
+  } else {
+    pendingAuthAction = callback;
+    authModal.classList.remove('hidden');
+    document.getElementById('auth-email').focus();
+  }
+}
+
+function updateWalletUI() {
+  if (currentUser) {
+    const balDisp = document.getElementById('checkout-wallet-balance');
+    const mainBalDisp = document.getElementById('wallet-balance-main');
+    if(balDisp) balDisp.textContent = '₹' + currentUser.walletBalance;
+    if(mainBalDisp) mainBalDisp.textContent = '₹' + currentUser.walletBalance;
+  }
+}
+
+document.getElementById('btn-add-funds').addEventListener('click', async () => {
+  if (!currentUser) return;
+  const amount = document.getElementById('add-fund-amount').value.trim();
+  const utr = document.getElementById('paytm-ref-input').value.trim();
+
+  if (!amount || parseInt(amount) <= 0) return showToast('Enter valid amount', 'error');
+  if (!utr || utr.length !== 12) return showToast('Enter valid 12-digit UTR', 'error');
+
+  const btn = document.getElementById('btn-add-funds');
+  const btnText = btn.querySelector('.btn-text');
+  const loader = btn.querySelector('.loader');
+  
+  btnText.textContent = 'Processing...';
+  loader.classList.remove('hidden');
+  btn.style.pointerEvents = 'none';
+
+  try {
+    const res = await fetch('/api/fund-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: parseInt(amount), paymentMethod: 'Paytm', transactionRef: utr })
+    });
+    
+    if (res.ok) {
+      showToast('Fund request submitted! Waiting for admin approval.');
+      document.getElementById('add-fund-amount').value = '';
+      document.getElementById('paytm-ref-input').value = '';
+      initBackend({ silent: true }); // refresh data
+    } else {
+      const d = await res.json();
+      showToast(d.error || 'Failed to submit request', 'error');
+    }
+  } catch(e) {
+    showToast('Error submitting request', 'error');
+  }
+
+  btnText.textContent = 'Submit Request';
+  loader.classList.add('hidden');
+  btn.style.pointerEvents = 'auto';
+});
+
 // DOM Elements
 const pages = [document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3')];
 const steps = [document.getElementById('step1'), document.getElementById('step2'), document.getElementById('step3')];
@@ -272,7 +576,9 @@ const steps = [document.getElementById('step1'), document.getElementById('step2'
 // Navigation listeners
 document.getElementById('btn-back-to-1').addEventListener('click', () => navigate(1));
 document.getElementById('btn-next-to-3').addEventListener('click', () => {
-  if (validateForm()) navigate(3);
+  if (validateForm()) {
+    requireAuth(() => navigate(3));
+  }
 });
 document.getElementById('btn-back-to-2').addEventListener('click', () => navigate(2));
 document.getElementById('btn-place-order').addEventListener('click', placeOrder);
@@ -511,25 +817,19 @@ function navigate(stepNumber) {
     document.getElementById('sum-link').textContent = link;
     document.getElementById('sum-total').textContent = '₹' + state.price;
     
-    // Update QR specifically for this package if exists
-    const packages = globalData.packages || {};
-    const svcSettings = packages[state.service] || {};
-    const pkgSettings = svcSettings[state.pkgId] || null;
-    const settings = globalData.settings || {};
-
-    // UPI is now mostly global / default only.
-    document.getElementById('upi-qr').src = settings.qrUrl || '';
-    
-    // Update Service-Specific Payment Fallbacks
-    document.getElementById('card-payment-link').href = (pkgSettings && pkgSettings.cardUrl) ? pkgSettings.cardUrl : settings.cardLink || '#';
-    // Shift Package-Specific QR into the Pay QR slot natively if provided, else fallback to service specific Pay QR, else global.
-    document.getElementById('paytm-qr').src = (pkgSettings && pkgSettings.qrUrl) ? pkgSettings.qrUrl : (svcSettings.paytmQrUrl || settings.paytmQrUrl || '');
-    document.getElementById('admin-crypto-net-disp').textContent = (pkgSettings && pkgSettings.cryptoNet) ? pkgSettings.cryptoNet : svcSettings.cryptoNet || settings.cryptoNet || 'Not set';
-    document.getElementById('admin-crypto-addr-disp').textContent = (pkgSettings && pkgSettings.cryptoAddr) ? pkgSettings.cryptoAddr : svcSettings.cryptoAddr || settings.cryptoAddr || 'Not set';
-    
-    if (state.payment === 'Paytm') {
-      startQrTimer();
+    // Ensure wallet balance reflects immediately
+    updateWalletUI();
+    const btnPlaceOrder = document.getElementById('btn-place-order');
+    if (currentUser && currentUser.walletBalance < state.price) {
+      document.getElementById('checkout-wallet-error').classList.remove('hidden');
+      btnPlaceOrder.disabled = true;
+      btnPlaceOrder.style.opacity = '0.5';
+    } else {
+      document.getElementById('checkout-wallet-error').classList.add('hidden');
+      btnPlaceOrder.disabled = false;
+      btnPlaceOrder.style.opacity = '1';
     }
+
   } else {
     clearInterval(qrTimerInterval);
   }
@@ -555,17 +855,26 @@ function switchTab(tabName) {
     // Rely on navigate to handle header and step UI for Home
     navigate(1); 
   } else {
-    // Hide Home specific UI
-    document.querySelector('.header').style.display = 'none';
-    document.querySelector('.step-indicator').style.display = 'none';
-    
-    if (tabName === 'orders') {
-      document.getElementById('page-orders').classList.add('view-active');
-      renderOrders();
-    } else if (tabName === 'history') {
-      document.getElementById('page-history').classList.add('view-active');
-      renderHistory();
-    }
+    requireAuth(() => {
+      // Hide Home specific UI
+      document.querySelector('.header').style.display = 'none';
+      document.querySelector('.step-indicator').style.display = 'none';
+      
+      if (tabName === 'orders') {
+        document.getElementById('page-orders').classList.add('view-active');
+        renderOrders();
+      } else if (tabName === 'history') {
+        document.getElementById('page-history').classList.add('view-active');
+        renderHistory();
+      } else if (tabName === 'wallet') {
+        document.getElementById('page-wallet').classList.add('view-active');
+        
+        // Update Add Funds global QR
+        const settings = globalData.settings || {};
+        document.getElementById('paytm-qr').src = settings.qrUrl || settings.paytmQrUrl || '';
+        startQrTimer();
+      }
+    });
   }
 }
 
@@ -664,57 +973,27 @@ function validateForm() {
 }
 
 function placeOrder() {
-// Validate Payment forms if required
-  let transactionRef = '';
-  
-  if (state.payment === 'UPI') {
-    const upiRef = document.getElementById('upi-ref-input').value.trim();
-    if (!upiRef) {
-      showToast('Please enter the UTR / Reference Number', 'error');
-      document.getElementById('upi-ref-input').focus();
-      return;
-    }
-    transactionRef = upiRef;
-  } else if (state.payment === 'Card') {
-    const cardVal = document.getElementById('card-input').value.trim();
-    if (!cardVal) {
-      showToast('Please enter your Card Reference Number', 'error');
-      document.getElementById('card-input').focus();
-      return;
-    }
-    transactionRef = cardVal;
-  } else if (state.payment === 'Paytm') {
-    const paytmRef = document.getElementById('paytm-ref-input').value.trim();
-    if (!paytmRef || paytmRef.length !== 12) {
-      showToast('Please enter a valid 12-Digit UTR Number', 'error');
-      document.getElementById('paytm-ref-input').focus();
-      return;
-    }
-    transactionRef = paytmRef;
-  } else if (state.payment === 'Crypto') {
-    const cryptoVal = document.getElementById('crypto-input').value.trim();
-    if (!cryptoVal) {
-      showToast('Please enter the Transaction Hash (TxID)', 'error');
-      document.getElementById('crypto-input').focus();
-      return;
-    }
-    transactionRef = cryptoVal;
+  if (!currentUser) return requireAuth(() => navigate(3));
+
+  if (currentUser.walletBalance < state.price) {
+    showToast('Insufficient wallet balance', 'error');
+    return;
   }
 
   // Set loading state
   const btn = document.getElementById('btn-place-order');
   const btnText = btn.querySelector('.btn-text');
-  const btnIcon = btn.querySelector('.fa-lock');
+  const btnIcon = btn.querySelector('.fa-wallet');
   const loader = btn.querySelector('.loader');
 
   btnText.textContent = 'Processing...';
-  btnIcon.classList.add('hidden');
+  if(btnIcon) btnIcon.classList.add('hidden');
   loader.classList.remove('hidden');
   btn.style.pointerEvents = 'none';
 
   if (!isBackendConnected) {
-    btnText.textContent = 'Pay Now Securely';
-    btnIcon.classList.remove('hidden');
+    btnText.textContent = 'Pay with Wallet & Order';
+    if(btnIcon) btnIcon.classList.remove('hidden');
     loader.classList.add('hidden');
     btn.style.pointerEvents = 'auto';
     showToast('Server connect nahi ho raha. Order place karne ke liye app ko `npm start` ke saath chalao.', 'error');
@@ -730,19 +1009,27 @@ function placeOrder() {
       qty: state.qty,
       price: state.price,
       link: document.getElementById('link-input').value.trim(),
-      email: document.getElementById('email-input').value.trim(),
-      payment: state.payment,
-      transactionRef: transactionRef,
+      email: currentUser.email || document.getElementById('email-input').value.trim(),
       status: 'Pending',
       date: new Date().toLocaleString()
     };
 
     try {
-      await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderRecord)
       });
+      
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to place order');
+      }
+
+      const responseData = await res.json();
+      
+      currentUser.walletBalance = responseData.newBalance;
+      updateWalletUI();
 
       globalData.orders = [...(globalData.orders || []), orderRecord];
       cachePublicData(globalData);
@@ -765,12 +1052,12 @@ function placeOrder() {
       
     } catch (e) {
       console.error(e);
-      showToast('Failed to place order. Try again.', 'error');
+      showToast(e.message || 'Failed to place order. Try again.', 'error');
     }
     
     // Restore button for next time
-    btnText.textContent = 'Pay Now Securely';
-    btnIcon.classList.remove('hidden');
+    btnText.textContent = 'Pay with Wallet & Order';
+    if(btnIcon) btnIcon.classList.remove('hidden');
     loader.classList.add('hidden');
     btn.style.pointerEvents = 'auto';
 
@@ -788,6 +1075,22 @@ function resetApp() {
   if(document.getElementById('crypto-input')) document.getElementById('crypto-input').value = '';
   
   switchTab('home');
+}
+
+async function safeJson(response) {
+  try {
+    return await response.json();
+  } catch (error) {
+    return {};
+  }
+}
+
+function updateWalletUI() {
+  const balance = currentUser ? currentUser.walletBalance : 0;
+  const balDisp = document.getElementById('checkout-wallet-balance');
+  const mainBalDisp = document.getElementById('wallet-balance-main');
+  if (balDisp) balDisp.textContent = 'â‚¹' + balance;
+  if (mainBalDisp) mainBalDisp.textContent = 'â‚¹' + balance;
 }
 
 // Custom Toast Notification System

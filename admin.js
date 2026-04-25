@@ -1,4 +1,4 @@
-let globalData = { settings: {}, packages: {}, orders: [] };
+let globalData = { settings: {}, packages: {}, orders: [], fundRequests: [] };
 let currentAdminSelectedSvc = 'Instagram Followers';
 let autoRefreshInterval = null;
 
@@ -9,7 +9,8 @@ function startAutoRefresh() {
     try {
       const response = await adminFetch('/api/admin/data');
       globalData = await response.json();
-      loadOrders(); // Only reload orders dynamically
+      loadOrders();
+      loadFunds();
     } catch (error) {
       console.error('Auto refresh failed', error);
     }
@@ -31,7 +32,8 @@ function bindStaticEvents() {
   document.getElementById('btn-admin-logout').addEventListener('click', handleAdminLogout);
   document.getElementById('btn-save-payment').addEventListener('click', savePaymentSettings);
   document.getElementById('btn-save-prices').addEventListener('click', savePricingSettings);
-  document.getElementById('btn-refresh-orders').addEventListener('click', refreshOrders);
+  document.getElementById('btn-refresh-orders').addEventListener('click', refreshDashboard);
+  document.getElementById('btn-refresh-funds').addEventListener('click', refreshDashboard);
 
   document.querySelectorAll('.svc-tab').forEach(tab => {
     tab.addEventListener('click', event => {
@@ -74,6 +76,7 @@ async function initializeDashboard() {
   globalData = await response.json();
   loadConfigs();
   loadOrders();
+  loadFunds();
   startAutoRefresh();
 }
 
@@ -198,11 +201,6 @@ function loadPricingForm(serviceName) {
 
 function setPackageFields(packageId, packageData = {}, fallbackPrice) {
   document.getElementById(`price-${packageId}`).value = packageData.price || fallbackPrice;
-  document.getElementById(`qr-${packageId}`).value = packageData.qrUrl || '';
-  document.getElementById(`card-${packageId}`).value = packageData.cardUrl || '';
-  document.getElementById(`phone-${packageId}`).value = packageData.phone || '';
-  document.getElementById(`cryptonet-${packageId}`).value = packageData.cryptoNet || '';
-  document.getElementById(`cryptoaddr-${packageId}`).value = packageData.cryptoAddr || '';
 }
 
 async function savePaymentSettings() {
@@ -248,23 +246,19 @@ async function savePricingSettings() {
 
 function readPackageForm(packageId, fallbackPrice) {
   return {
-    price: parseInt(document.getElementById(`price-${packageId}`).value, 10) || fallbackPrice,
-    qrUrl: document.getElementById(`qr-${packageId}`).value.trim(),
-    cardUrl: document.getElementById(`card-${packageId}`).value.trim(),
-    phone: document.getElementById(`phone-${packageId}`).value.trim(),
-    cryptoNet: document.getElementById(`cryptonet-${packageId}`).value.trim(),
-    cryptoAddr: document.getElementById(`cryptoaddr-${packageId}`).value.trim()
+    price: parseInt(document.getElementById(`price-${packageId}`).value, 10) || fallbackPrice
   };
 }
 
-async function refreshOrders() {
+async function refreshDashboard() {
   try {
     const response = await adminFetch('/api/admin/data');
     globalData = await response.json();
     loadOrders();
-    showToast('Orders refreshed.');
+    loadFunds();
+    showToast('Dashboard refreshed.');
   } catch (error) {
-    showToast(error.message || 'Failed to refresh orders.', 'error');
+    showToast(error.message || 'Failed to refresh.', 'error');
   }
 }
 
@@ -299,18 +293,18 @@ function loadOrders() {
     const safeService = escapeHtml(order.service || 'Unknown');
     const safeQty = escapeHtml(order.qty || '0');
     const safeLinkText = escapeHtml(truncate(order.link || '', 25));
-    const safePayment = escapeHtml(order.payment || 'N/A');
-    const safeRef = escapeHtml(order.transactionRef || 'N/A');
-    const href = escapeAttribute(normalizeLink(order.link || ''));
+    const safeEmail = escapeHtml(order.email || 'N/A');
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
         <strong>${safeOrderId}</strong>
         ${statusBadge}
-        <div style="font-size: 11px; margin-top:4px;">Ref: ${safeRef}</div>
       </td>
       <td style="color: #64748b; font-size: 13px;">${safeDate}</td>
+      <td>
+        <div style="font-weight: 500;">${safeEmail}</div>
+      </td>
       <td>
         <div style="font-weight: 500;">${safeService}</div>
         <div style="font-size: 12px; color: #64748b;">Qty: ${safeQty}</div>
@@ -318,8 +312,7 @@ function loadOrders() {
       <td><a href="${href}" target="_blank" rel="noreferrer">${safeLinkText}</a></td>
       <td style="font-weight: 600; color: #10b981;">${formatCurrency(order.price)}</td>
       <td>
-        <span class="badge">${safePayment}</span>
-        <div style="margin-top: 8px; display:flex; gap: 4px;">
+        <div style="display:flex; flex-direction:column; gap: 4px;">
           ${order.status === 'Pending'
             ? `
               <button onclick="updateOrderStatus(${JSON.stringify(order.id)}, 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
@@ -327,6 +320,54 @@ function loadOrders() {
             `
             : ''}
           <button onclick="deleteOrder(${JSON.stringify(order.id)})" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function loadFunds() {
+  const funds = globalData.fundRequests || [];
+  const tbody = document.getElementById('funds-tbody');
+  const emptyState = document.getElementById('no-funds');
+
+  tbody.innerHTML = '';
+
+  if (!funds.length) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  emptyState.classList.add('hidden');
+
+  funds.forEach(req => {
+    const statusBadge = getStatusBadge(req.status);
+    const safeDate = escapeHtml(req.date || 'N/A');
+    const safeEmail = escapeHtml(req.email || 'Unknown');
+    const safeMethod = escapeHtml(req.paymentMethod || 'N/A');
+    const safeRef = escapeHtml(req.transactionRef || 'N/A');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight: 500;">${safeEmail}</div>
+        ${statusBadge}
+      </td>
+      <td style="color: #64748b; font-size: 13px;">${safeDate}</td>
+      <td><span class="badge">${safeMethod}</span></td>
+      <td style="font-family: monospace;">${safeRef}</td>
+      <td style="font-weight: 600; color: #10b981;">${formatCurrency(req.amount)}</td>
+      <td>
+        <div style="display:flex; gap: 4px;">
+          ${req.status === 'Pending'
+            ? `
+              <button onclick="updateFundStatus(${JSON.stringify(req.id)}, 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
+              <button onclick="updateFundStatus(${JSON.stringify(req.id)}, 'Rejected')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Reject</button>
+            `
+            : ''}
+          <button onclick="deleteFund(${JSON.stringify(req.id)})" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
     `;
@@ -379,6 +420,41 @@ window.deleteOrder = async function(id) {
     showToast('Order completely removed.');
   } catch (error) {
     showToast(error.message || 'Failed to delete order.', 'error');
+  }
+};
+
+window.updateFundStatus = async function(id, newStatus) {
+  try {
+    await adminFetch('/api/admin/fund-requests/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+
+    const fund = (globalData.fundRequests || []).find(item => item.id === id);
+    if (fund) {
+      fund.status = newStatus;
+    }
+
+    loadFunds();
+    showToast(`Fund request ${newStatus.toLowerCase()} successfully.`);
+  } catch (error) {
+    showToast(error.message || 'Failed to update fund request.', 'error');
+  }
+};
+
+window.deleteFund = async function(id) {
+  if (!window.confirm('Are you sure you want to completely remove this fund request?')) {
+    return;
+  }
+
+  try {
+    await adminFetch('/api/admin/fund-requests/' + encodeURIComponent(id), { method: 'DELETE' });
+    globalData.fundRequests = (globalData.fundRequests || []).filter(req => req.id !== id);
+    loadFunds();
+    showToast('Fund request completely removed.');
+  } catch (error) {
+    showToast(error.message || 'Failed to delete fund request.', 'error');
   }
 };
 

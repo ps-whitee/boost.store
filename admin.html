@@ -69,13 +69,13 @@
             </div>
             <div class="card-body">
               <div class="upi-section">
-                <h4 class="section-title text-primary"><i class="fa-solid fa-mobile-screen"></i> UPI Details</h4>
+                <h4 class="section-title text-primary"><i class="fa-solid fa-mobile-screen"></i> Wallet Add Funds Config</h4>
                 <div class="input-group">
-                  <label for="admin-upi-input">Admin UPI ID</label>
+                  <label for="admin-upi-input">Global Pay QR Title/UPI ID (Optional)</label>
                   <input type="text" id="admin-upi-input" placeholder="admin@upi">
                 </div>
                 <div class="input-group">
-                  <label for="admin-qr-input">UPI QR Code (Image URL or Upload)</label>
+                  <label for="admin-qr-input">Global Pay QR Code for Adding Funds</label>
                   <div class="admin-qr-row">
                     <input type="text" id="admin-qr-input" placeholder="https://link-to-qr.com/image.png" class="flex-1">
                     <label class="upload-btn">
@@ -112,33 +112,8 @@
               <div class="pkg-admin-box">
                 <h4 class="pkg-title">Starter Pack</h4>
                 <div class="pkg-fields-wrapper">
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="number" id="price-starter" placeholder="Price (Rs)">
-                    </div>
-                    <div class="input-group mb-0 pkg-fields-row flex-2">
-                      <input type="text" id="qr-starter" placeholder="Specific Pay QR Link (Optional)" class="flex-1">
-                      <label class="upload-btn">
-                        <i class="fa-solid fa-upload"></i>
-                        <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-starter')">
-                      </label>
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="card-starter" placeholder="Specific Stripe/Card Link (Optional)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="phone-starter" placeholder="Pay QR Phone / UPI Number">
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptonet-starter" placeholder="Crypto Network (e.g. TRC20)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptoaddr-starter" placeholder="Crypto Wallet Address">
-                    </div>
+                  <div class="input-group mb-0">
+                    <input type="number" id="price-starter" placeholder="Price (Rs)">
                   </div>
                 </div>
               </div>
@@ -146,33 +121,8 @@
               <div class="pkg-admin-box">
                 <h4 class="pkg-title">Popular Pack</h4>
                 <div class="pkg-fields-wrapper">
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="number" id="price-popular" placeholder="Price (Rs)">
-                    </div>
-                    <div class="input-group mb-0 pkg-fields-row flex-2">
-                      <input type="text" id="qr-popular" placeholder="Specific Pay QR Link (Optional)" class="flex-1">
-                      <label class="upload-btn">
-                        <i class="fa-solid fa-upload"></i>
-                        <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-popular')">
-                      </label>
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="card-popular" placeholder="Specific Stripe/Card Link (Optional)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="phone-popular" placeholder="Pay QR Phone / UPI Number">
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptonet-popular" placeholder="Crypto Network (e.g. TRC20)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptoaddr-popular" placeholder="Crypto Wallet Address">
-                    </div>
+                  <div class="input-group mb-0">
+                    <input type="number" id="price-popular" placeholder="Price (Rs)">
                   </div>
                 </div>
               </div>
@@ -180,33 +130,8 @@
               <div class="pkg-admin-box">
                 <h4 class="pkg-title">Pro Pack</h4>
                 <div class="pkg-fields-wrapper">
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="number" id="price-pro" placeholder="Price (Rs)">
-                    </div>
-                    <div class="input-group mb-0 pkg-fields-row flex-2">
-                      <input type="text" id="qr-pro" placeholder="Specific Pay QR Link (Optional)" class="flex-1">
-                      <label class="upload-btn">
-                        <i class="fa-solid fa-upload"></i>
-                        <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-pro')">
-                      </label>
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="card-pro" placeholder="Specific Stripe/Card Link (Optional)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="phone-pro" placeholder="Pay QR Phone / UPI Number">
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptonet-pro" placeholder="Crypto Network (e.g. TRC20)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptoaddr-pro" placeholder="Crypto Wallet Address">
-                    </div>
+                  <div class="input-group mb-0">
+                    <input type="number" id="price-pro" placeholder="Price (Rs)">
                   </div>
                 </div>
               </div>
@@ -214,33 +139,8 @@
               <div class="pkg-admin-box">
                 <h4 class="pkg-title">Viral Pack</h4>
                 <div class="pkg-fields-wrapper">
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="number" id="price-viral" placeholder="Price (Rs)">
-                    </div>
-                    <div class="input-group mb-0 pkg-fields-row flex-2">
-                      <input type="text" id="qr-viral" placeholder="Specific Pay QR Link (Optional)" class="flex-1">
-                      <label class="upload-btn">
-                        <i class="fa-solid fa-upload"></i>
-                        <input type="file" accept="image/*" style="display:none;" onchange="encodeImageFileAsURL(this, 'qr-viral')">
-                      </label>
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="card-viral" placeholder="Specific Stripe/Card Link (Optional)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="phone-viral" placeholder="Pay QR Phone / UPI Number">
-                    </div>
-                  </div>
-                  <div class="pkg-fields-row">
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptonet-viral" placeholder="Crypto Network (e.g. TRC20)">
-                    </div>
-                    <div class="input-group mb-0 flex-1">
-                      <input type="text" id="cryptoaddr-viral" placeholder="Crypto Wallet Address">
-                    </div>
+                  <div class="input-group mb-0">
+                    <input type="number" id="price-viral" placeholder="Price (Rs)">
                   </div>
                 </div>
               </div>
@@ -251,7 +151,7 @@
         </div>
 
         <div class="column-right">
-          <div class="card mb-4" style="margin-bottom: 20px; background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.25);">
+          <div class="card mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.25);">
             <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; padding: 24px;">
               <div>
                 <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px; font-weight: 500;">Total Verified Earnings</div>
@@ -259,6 +159,32 @@
               </div>
               <div>
                 <i class="fa-solid fa-wallet" style="font-size: 40px; opacity: 0.5;"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-4">
+            <div class="card-header flex-between" style="background: rgba(245, 158, 11, 0.1); border-bottom: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b;">
+              <div><i class="fa-solid fa-money-bill-transfer"></i> Pending Fund Requests</div>
+              <button class="refresh-btn" id="btn-refresh-funds" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            <div class="table-container">
+              <table class="orders-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Ref No.</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="funds-tbody"></tbody>
+              </table>
+              <div id="no-funds" class="empty-state hidden">
+                <i class="fa-solid fa-check-circle" style="color: #10b981;"></i>
+                <p>All caught up!</p>
               </div>
             </div>
           </div>
@@ -275,10 +201,10 @@
                   <tr>
                     <th>Order ID</th>
                     <th>Date</th>
+                    <th>Email</th>
                     <th>Service</th>
                     <th>Target Link</th>
-                    <th>Amount</th>
-                    <th>Payment</th>
+                    <th>Cost</th>
                   </tr>
                 </thead>
                 <tbody id="orders-tbody"></tbody>
