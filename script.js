@@ -346,12 +346,94 @@ window.addEventListener('online', () => {
 // PWA Install Prompt Logic
 let deferredPrompt;
 const installBtn = document.getElementById('install-app-btn');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const themeToggleIcon = document.getElementById('theme-toggle-icon');
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: light)');
 const profileMenuBtn = document.getElementById('profile-menu-btn');
 const profileMenu = document.getElementById('profile-menu');
 const profileMenuEmail = document.getElementById('profile-menu-email');
 const profileMenuAction = document.getElementById('profile-menu-action');
 const profileMenuActionText = document.getElementById('profile-menu-action-text');
 const profileMenuActionIcon = profileMenuAction ? profileMenuAction.querySelector('i') : null;
+const THEME_STORAGE_KEY = 'booststore_theme_preference';
+const THEME_META_COLORS = {
+  dark: '#08111f',
+  light: '#eef4ff'
+};
+
+function getStoredThemePreference() {
+  try {
+    const theme = localStorage.getItem(THEME_STORAGE_KEY);
+    return theme === 'light' || theme === 'dark' ? theme : null;
+  } catch (error) {
+    console.error('Failed to read theme preference', error);
+    return null;
+  }
+}
+
+function setStoredThemePreference(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (error) {
+    console.error('Failed to save theme preference', error);
+  }
+}
+
+function updateThemeToggleUI(theme) {
+  if (!themeToggleBtn || !themeToggleIcon) {
+    return;
+  }
+
+  const nextTheme = theme === 'light' ? 'dark' : 'light';
+  themeToggleBtn.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
+  themeToggleBtn.setAttribute('title', `Switch to ${nextTheme} mode`);
+  themeToggleBtn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+  themeToggleIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+}
+
+function applyTheme(theme, options = {}) {
+  const { persist = true } = options;
+  const nextTheme = theme === 'light' ? 'light' : 'dark';
+
+  document.documentElement.dataset.theme = nextTheme;
+  updateThemeToggleUI(nextTheme);
+
+  if (themeColorMeta) {
+    themeColorMeta.setAttribute('content', THEME_META_COLORS[nextTheme]);
+  }
+
+  if (persist) {
+    setStoredThemePreference(nextTheme);
+  }
+}
+
+function resolvePreferredTheme() {
+  return getStoredThemePreference() || (systemThemeQuery.matches ? 'light' : 'dark');
+}
+
+applyTheme(resolvePreferredTheme(), { persist: false });
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    applyTheme(nextTheme);
+  });
+}
+
+if (typeof systemThemeQuery.addEventListener === 'function') {
+  systemThemeQuery.addEventListener('change', event => {
+    if (!getStoredThemePreference()) {
+      applyTheme(event.matches ? 'light' : 'dark', { persist: false });
+    }
+  });
+} else if (typeof systemThemeQuery.addListener === 'function') {
+  systemThemeQuery.addListener(event => {
+    if (!getStoredThemePreference()) {
+      applyTheme(event.matches ? 'light' : 'dark', { persist: false });
+    }
+  });
+}
 
 function isInstalledApp() {
   const isStandaloneDisplay = window.matchMedia('(display-mode: standalone)').matches;
@@ -515,9 +597,9 @@ async function handleUserLogout() {
 }
 
 function setAuthTabState(button, isActive) {
-  button.style.background = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.04)';
+  button.style.background = isActive ? 'var(--primary)' : 'var(--button-soft-bg)';
   button.style.borderColor = isActive ? 'var(--primary)' : 'var(--border-light)';
-  button.style.color = '#fff';
+  button.style.color = isActive ? '#fff' : 'var(--text-main)';
   button.style.boxShadow = isActive ? '0 10px 24px rgba(99, 102, 241, 0.28)' : 'none';
 }
 
@@ -556,6 +638,7 @@ function clearAuthForm(options = {}) {
 }
 
 function openAuthModal(mode = 'login') {
+  setProfileMenuOpen(false);
   setAuthMode(mode);
   authModal.classList.remove('hidden');
 
