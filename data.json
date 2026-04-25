@@ -1,5 +1,41 @@
 {
   "settings": {},
-  "packages": {},
-  "orders": []
+  "packages": {
+    "Instagram Likes": {
+      "starter": {
+        "price": 100
+      },
+      "popular": {
+        "price": 249
+      },
+      "pro": {
+        "price": 499
+      },
+      "viral": {
+        "price": 999
+      }
+    }
+  },
+  "orders": [],
+  "fundRequests": [
+    {
+      "id": "#FR-96928",
+      "email": "pswhite444outlook@gmail.com",
+      "userId": "fYV4I5BlHfhWVRlhaJEwIVhT8963",
+      "amount": 500,
+      "paymentMethod": "Paytm",
+      "transactionRef": "123456789123",
+      "status": "Approved",
+      "date": "25/4/2026, 6:22:02 pm"
+    }
+  ],
+  "users": [
+    {
+      "uid": "fYV4I5BlHfhWVRlhaJEwIVhT8963",
+      "email": "pswhite444outlook@gmail.com",
+      "walletBalance": 500,
+      "createdAt": "2026-04-25T12:49:35.766Z",
+      "lastLoginAt": "2026-04-25T12:58:05.498Z"
+    }
+  ]
 }

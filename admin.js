@@ -1,4 +1,5 @@
 let globalData = { settings: {}, packages: {}, orders: [], fundRequests: [] };
+let pendingQrBase64 = null;
 let currentAdminSelectedSvc = 'Instagram Followers';
 let autoRefreshInterval = null;
 
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindStaticEvents();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').catch(() => { });
   }
 
   await checkAdminSession();
@@ -176,7 +177,11 @@ function loadConfigs() {
   const packages = globalData.packages || {};
 
   document.getElementById('admin-upi-input').value = settings.upiId || '';
-  document.getElementById('admin-qr-input').value = settings.qrUrl || '';
+  if (settings.qrUrl && settings.qrUrl.startsWith('data:image')) {
+    document.getElementById('admin-qr-input').value = '[Uploaded Image]';
+  } else {
+    document.getElementById('admin-qr-input').value = settings.qrUrl || '';
+  }
 
   currentAdminSelectedSvc = currentAdminSelectedSvc || 'Instagram Followers';
   document.getElementById('current-svc-title').innerHTML =
@@ -206,7 +211,15 @@ function setPackageFields(packageId, packageData = {}, fallbackPrice) {
 async function savePaymentSettings() {
   globalData.settings = globalData.settings || {};
   globalData.settings.upiId = document.getElementById('admin-upi-input').value.trim();
-  globalData.settings.qrUrl = document.getElementById('admin-qr-input').value.trim();
+  
+  const newQr = document.getElementById('admin-qr-input').value.trim();
+  if (pendingQrBase64) {
+    globalData.settings.qrUrl = pendingQrBase64;
+    pendingQrBase64 = null;
+    document.getElementById('admin-qr-input').value = '[Uploaded Image]';
+  } else if (newQr !== '' && newQr !== '[Uploaded Image]' && newQr !== '[New Uploaded Image]') {
+    globalData.settings.qrUrl = newQr;
+  }
 
   try {
     await adminFetch('/api/settings', {
@@ -271,20 +284,10 @@ function loadOrders() {
 
   if (!orders.length) {
     emptyState.classList.remove('hidden');
-    document.getElementById('total-earnings').textContent = formatCurrency(0);
     return;
   }
 
   emptyState.classList.add('hidden');
-
-  const totalEarnings = orders.reduce((total, order) => {
-    if (order.status === 'Approved') {
-      return total + (parseInt(order.price, 10) || 0);
-    }
-    return total;
-  }, 0);
-
-  document.getElementById('total-earnings').textContent = formatCurrency(totalEarnings);
 
   orders.forEach(order => {
     const statusBadge = getStatusBadge(order.status);
@@ -315,12 +318,12 @@ function loadOrders() {
       <td>
         <div style="display:flex; flex-direction:column; gap: 4px;">
           ${order.status === 'Pending'
-            ? `
-              <button onclick="updateOrderStatus(${JSON.stringify(order.id)}, 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
-              <button onclick="updateOrderStatus(${JSON.stringify(order.id)}, 'Rejected')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Reject</button>
+        ? `
+              <button onclick="updateOrderStatus('${order.id}', 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
+              <button onclick="updateOrderStatus('${order.id}', 'Rejected')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Reject</button>
             `
-            : ''}
-          <button onclick="deleteOrder(${JSON.stringify(order.id)})" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+        : ''}
+          <button onclick="deleteOrder('${order.id}')" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
     `;
@@ -338,10 +341,20 @@ function loadFunds() {
 
   if (!funds.length) {
     emptyState.classList.remove('hidden');
+    document.getElementById('total-earnings').textContent = formatCurrency(0);
     return;
   }
 
   emptyState.classList.add('hidden');
+
+  const totalEarnings = funds.reduce((total, req) => {
+    if (req.status === 'Approved') {
+      return total + (parseInt(req.amount, 10) || 0);
+    }
+    return total;
+  }, 0);
+
+  document.getElementById('total-earnings').textContent = formatCurrency(totalEarnings);
 
   funds.forEach(req => {
     const statusBadge = getStatusBadge(req.status);
@@ -363,12 +376,12 @@ function loadFunds() {
       <td>
         <div style="display:flex; gap: 4px;">
           ${req.status === 'Pending'
-            ? `
-              <button onclick="updateFundStatus(${JSON.stringify(req.id)}, 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
-              <button onclick="updateFundStatus(${JSON.stringify(req.id)}, 'Rejected')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Reject</button>
+        ? `
+              <button onclick="updateFundStatus('${req.id}', 'Approved')" style="padding:4px 8px; background:#10b981; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Approve</button>
+              <button onclick="updateFundStatus('${req.id}', 'Rejected')" style="padding:4px 8px; background:#ef4444; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;">Reject</button>
             `
-            : ''}
-          <button onclick="deleteFund(${JSON.stringify(req.id)})" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+        : ''}
+          <button onclick="deleteFund('${req.id}')" style="padding:4px 8px; background:#64748b; color:white; border:none; border-radius:4px; font-size:11px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
     `;
@@ -389,7 +402,7 @@ function getStatusBadge(status) {
   return '<span class="badge" style="background:#fef3c7; color:#92400e;">Pending</span>';
 }
 
-window.updateOrderStatus = async function(id, newStatus) {
+window.updateOrderStatus = async function (id, newStatus) {
   try {
     await adminFetch('/api/orders/' + encodeURIComponent(id), {
       method: 'PUT',
@@ -409,7 +422,7 @@ window.updateOrderStatus = async function(id, newStatus) {
   }
 };
 
-window.deleteOrder = async function(id) {
+window.deleteOrder = async function (id) {
   if (!window.confirm('Are you sure you want to completely remove this order?')) {
     return;
   }
@@ -424,7 +437,7 @@ window.deleteOrder = async function(id) {
   }
 };
 
-window.updateFundStatus = async function(id, newStatus) {
+window.updateFundStatus = async function (id, newStatus) {
   try {
     await adminFetch('/api/admin/fund-requests/' + encodeURIComponent(id), {
       method: 'PUT',
@@ -444,7 +457,7 @@ window.updateFundStatus = async function(id, newStatus) {
   }
 };
 
-window.deleteFund = async function(id) {
+window.deleteFund = async function (id) {
   if (!window.confirm('Are you sure you want to completely remove this fund request?')) {
     return;
   }
@@ -459,7 +472,27 @@ window.deleteFund = async function(id) {
   }
 };
 
-window.encodeImageFileAsURL = function(input, targetInputId) {
+window.removeQR = async function () {
+  if (confirm('Are you sure you want to completely remove the QR code?')) {
+    globalData.settings = globalData.settings || {};
+    globalData.settings.qrUrl = '';
+    pendingQrBase64 = null;
+    document.getElementById('admin-qr-input').value = '';
+    
+    try {
+      await adminFetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: globalData.settings })
+      });
+      showToast('QR code removed successfully.');
+    } catch (error) {
+      showToast('Failed to remove QR code.', 'error');
+    }
+  }
+};
+
+window.encodeImageFileAsURL = function (input, targetInputId) {
   const file = input.files && input.files[0];
   if (!file) {
     return;
@@ -467,7 +500,8 @@ window.encodeImageFileAsURL = function(input, targetInputId) {
 
   const reader = new FileReader();
   reader.onload = () => {
-    document.getElementById(targetInputId).value = reader.result;
+    pendingQrBase64 = reader.result;
+    document.getElementById(targetInputId).value = '[New Uploaded Image]';
   };
   reader.readAsDataURL(file);
 };
