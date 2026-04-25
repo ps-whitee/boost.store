@@ -16,14 +16,24 @@ const ADMIN_PASSWORD = 'insider';
 const ADMIN_COOKIE_NAME = 'booststore_admin_session';
 const USER_COOKIE_NAME = 'booststore_user_session';
 
+const DEFAULT_FIREBASE_WEB_CONFIG = {
+  apiKey: 'AIzaSyCTtZ_8xNJGGsxKlod3U4XUjsuJDK2cVm8',
+  authDomain: 'sm-boost-b10d2.firebaseapp.com',
+  projectId: 'sm-boost-b10d2',
+  storageBucket: 'sm-boost-b10d2.firebasestorage.app',
+  messagingSenderId: '1075231898122',
+  appId: '1:1075231898122:web:d71d0189c25a015e1b7df3',
+  measurementId: 'G-8QCG5P9XGW'
+};
+
 const FIREBASE_WEB_CONFIG = {
-  apiKey: process.env.FIREBASE_WEB_API_KEY || '',
-  authDomain: process.env.FIREBASE_WEB_AUTH_DOMAIN || '',
-  projectId: process.env.FIREBASE_WEB_PROJECT_ID || '',
-  storageBucket: process.env.FIREBASE_WEB_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.FIREBASE_WEB_MESSAGING_SENDER_ID || '',
-  appId: process.env.FIREBASE_WEB_APP_ID || '',
-  measurementId: process.env.FIREBASE_WEB_MEASUREMENT_ID || ''
+  apiKey: process.env.FIREBASE_WEB_API_KEY || DEFAULT_FIREBASE_WEB_CONFIG.apiKey,
+  authDomain: process.env.FIREBASE_WEB_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain,
+  projectId: process.env.FIREBASE_WEB_PROJECT_ID || DEFAULT_FIREBASE_WEB_CONFIG.projectId,
+  storageBucket: process.env.FIREBASE_WEB_STORAGE_BUCKET || DEFAULT_FIREBASE_WEB_CONFIG.storageBucket,
+  messagingSenderId: process.env.FIREBASE_WEB_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_WEB_CONFIG.messagingSenderId,
+  appId: process.env.FIREBASE_WEB_APP_ID || DEFAULT_FIREBASE_WEB_CONFIG.appId,
+  measurementId: process.env.FIREBASE_WEB_MEASUREMENT_ID || DEFAULT_FIREBASE_WEB_CONFIG.measurementId
 };
 
 app.set('trust proxy', 1);
