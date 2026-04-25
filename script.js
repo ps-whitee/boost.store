@@ -23,6 +23,8 @@ let isFirebaseAuthConfigured = false;
 let isFirebaseAuthInitialized = false;
 let firebaseSessionSyncPromise = null;
 let pendingAuthAction = null;
+let authMode = 'login';
+let isAuthSubmitting = false;
 
 async function initBackend(options = {}) {
   const { silent = false } = options;
@@ -206,7 +208,7 @@ async function ensureFirebaseAuthReady() {
   const ready = await initFirebaseAuth();
 
   if (!ready || !firebaseAuth) {
-    showToast('Firebase email/password auth is not configured yet.', 'error');
+    showToast('Firebase sign in is not connected yet. Add your Firebase project config first.', 'error');
     return false;
   }
 
@@ -268,15 +270,17 @@ function runPendingAuthAction() {
 function getFirebaseErrorMessage(error) {
   switch (error && error.code) {
     case 'auth/email-already-in-use':
-      return 'This email is already registered. Please log in instead.';
+      return 'This email already has an account. Please sign in instead.';
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
     case 'auth/weak-password':
       return 'Password is too weak. Use at least 6 characters.';
+    case 'auth/missing-password':
+      return 'Please enter your password.';
     case 'auth/invalid-credential':
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'Invalid email or password.';
+      return 'Invalid email or password. If you are new here, create an account first.';
     case 'auth/too-many-requests':
       return 'Too many login attempts. Please try again later.';
     case 'auth/network-request-failed':
@@ -446,53 +450,159 @@ window.addEventListener('popstate', (e) => {
 
 // User Auth Logic
 const authModal = document.getElementById('auth-modal');
+const authTitle = document.getElementById('auth-title');
+const authSubtitle = document.getElementById('auth-subtitle');
+const authEmailInput = document.getElementById('auth-email');
+const authPasswordInput = document.getElementById('auth-password');
+const authConfirmGroup = document.getElementById('auth-confirm-group');
+const authPasswordConfirmInput = document.getElementById('auth-password-confirm');
+const authFooterNote = document.getElementById('auth-footer-note');
+const authTabLogin = document.getElementById('auth-tab-login');
+const authTabSignup = document.getElementById('auth-tab-signup');
+const authSubmitButton = document.getElementById('btn-auth-submit');
+
+function setAuthTabState(button, isActive) {
+  button.style.background = isActive ? 'var(--primary)' : 'rgba(255,255,255,0.04)';
+  button.style.borderColor = isActive ? 'var(--primary)' : 'var(--border-light)';
+  button.style.color = '#fff';
+  button.style.boxShadow = isActive ? '0 10px 24px rgba(99, 102, 241, 0.28)' : 'none';
+}
+
+function setAuthMode(mode = 'login') {
+  authMode = mode === 'signup' ? 'signup' : 'login';
+  const isSignupMode = authMode === 'signup';
+
+  authTitle.textContent = isSignupMode ? 'Create Your Account' : 'Welcome Back';
+  authSubtitle.textContent = isSignupMode
+    ? 'Create your account once, then use the same email and password to sign in anytime.'
+    : 'Sign in with the email and password you used while signing up.';
+  authFooterNote.textContent = isSignupMode
+    ? 'Already have an account? Switch back to Sign In.'
+    : 'New here? Switch to Sign Up and create your account first.';
+  authSubmitButton.textContent = isSignupMode ? 'Create Account' : 'Sign In';
+  authPasswordInput.autocomplete = isSignupMode ? 'new-password' : 'current-password';
+  authConfirmGroup.classList.toggle('hidden', !isSignupMode);
+
+  if (!isSignupMode) {
+    authPasswordConfirmInput.value = '';
+  }
+
+  setAuthTabState(authTabLogin, !isSignupMode);
+  setAuthTabState(authTabSignup, isSignupMode);
+}
+
+function clearAuthForm(options = {}) {
+  const { keepEmail = true } = options;
+
+  if (!keepEmail) {
+    authEmailInput.value = '';
+  }
+
+  authPasswordInput.value = '';
+  authPasswordConfirmInput.value = '';
+}
+
+function openAuthModal(mode = 'login') {
+  setAuthMode(mode);
+  authModal.classList.remove('hidden');
+
+  window.setTimeout(() => {
+    authEmailInput.focus();
+  }, 0);
+}
+
+function setAuthSubmittingState(isSubmitting) {
+  isAuthSubmitting = isSubmitting;
+  authSubmitButton.disabled = isSubmitting;
+  authSubmitButton.style.opacity = isSubmitting ? '0.7' : '1';
+  authSubmitButton.textContent = isSubmitting
+    ? (authMode === 'signup' ? 'Creating Account...' : 'Signing In...')
+    : (authMode === 'signup' ? 'Create Account' : 'Sign In');
+}
+
+async function handleAuthSubmit() {
+  if (isAuthSubmitting) {
+    return;
+  }
+
+  const email = authEmailInput.value.trim();
+  const password = authPasswordInput.value.trim();
+  const passwordConfirm = authPasswordConfirmInput.value.trim();
+
+  if (!email || !password) {
+    showToast('Email and password are required.', 'error');
+    return;
+  }
+
+  if (authMode === 'signup') {
+    if (password.length < 6) {
+      showToast('Use at least 6 characters for the password.', 'error');
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      showToast('Password and confirm password do not match.', 'error');
+      return;
+    }
+  }
+
+  if (!(await ensureFirebaseAuthReady())) {
+    return;
+  }
+
+  setAuthSubmittingState(true);
+
+  try {
+    const credential = authMode === 'signup'
+      ? await firebaseAuth.createUserWithEmailAndPassword(email, password)
+      : await firebaseAuth.signInWithEmailAndPassword(email, password);
+
+    await syncFirebaseUserSession(credential.user);
+    await initBackend({ silent: true });
+    authModal.classList.add('hidden');
+    clearAuthForm();
+    showToast(authMode === 'signup' ? 'Account created successfully!' : 'Logged in successfully!');
+    runPendingAuthAction();
+  } catch (error) {
+    if (authMode === 'signup' && error && error.code === 'auth/email-already-in-use') {
+      setAuthMode('login');
+    }
+
+    showToast(getFirebaseErrorMessage(error), 'error');
+  } finally {
+    setAuthSubmittingState(false);
+  }
+}
+
 document.getElementById('btn-close-auth').addEventListener('click', () => {
+  pendingAuthAction = null;
   authModal.classList.add('hidden');
+  clearAuthForm();
+  setAuthMode('login');
 });
 
-document.getElementById('btn-login').addEventListener('click', async () => {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value.trim();
-  if (!email || !password) return showToast('Email and password required', 'error');
+authTabLogin.addEventListener('click', () => {
+  setAuthMode('login');
+  authEmailInput.focus();
+});
 
-  try {
-    if (!(await ensureFirebaseAuthReady())) {
-      return;
+authTabSignup.addEventListener('click', () => {
+  setAuthMode('signup');
+  authEmailInput.focus();
+});
+
+authSubmitButton.addEventListener('click', handleAuthSubmit);
+
+[authEmailInput, authPasswordInput, authPasswordConfirmInput].forEach(input => {
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleAuthSubmit();
     }
-
-    const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
-    await syncFirebaseUserSession(credential.user);
-    await initBackend({ silent: true });
-    authModal.classList.add('hidden');
-    document.getElementById('auth-password').value = '';
-    showToast('Logged in successfully!');
-    runPendingAuthAction();
-  } catch (error) {
-    showToast(getFirebaseErrorMessage(error), 'error');
-  }
+  });
 });
 
-document.getElementById('btn-register').addEventListener('click', async () => {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value.trim();
-  if (!email || !password) return showToast('Email and password required', 'error');
-
-  try {
-    if (!(await ensureFirebaseAuthReady())) {
-      return;
-    }
-
-    const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
-    await syncFirebaseUserSession(credential.user);
-    await initBackend({ silent: true });
-    authModal.classList.add('hidden');
-    document.getElementById('auth-password').value = '';
-    showToast('Account created successfully!');
-    runPendingAuthAction();
-  } catch (error) {
-    showToast(getFirebaseErrorMessage(error), 'error');
-  }
-});
+setAuthMode('login');
 
 document.getElementById('btn-logout').addEventListener('click', async () => {
   try {
@@ -514,8 +624,7 @@ function requireAuth(callback) {
     callback();
   } else {
     pendingAuthAction = callback;
-    authModal.classList.remove('hidden');
-    document.getElementById('auth-email').focus();
+    openAuthModal('login');
   }
 }
 

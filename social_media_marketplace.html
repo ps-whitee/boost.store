@@ -36,11 +36,16 @@
 
   <!-- User Auth Modal -->
   <div class="auth-modal hidden" id="auth-modal" style="position: fixed; inset: 0; background: rgba(15,23,42,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-    <div class="auth-card" style="background: var(--card-bg); padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-color);">
+    <div class="auth-card" style="background: var(--card-bg); padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-color); position: relative;">
+      <button class="back-btn" id="btn-close-auth" style="position: absolute; top: 15px; right: 15px; border: none; background: rgba(255,255,255,0.05);"><i class="fa-solid fa-xmark"></i></button>
       <div style="text-align: center; margin-bottom: 20px;">
         <i class="fa-solid fa-user-lock" style="font-size: 40px; color: var(--primary); margin-bottom: 10px;"></i>
-        <h2 style="color: white;">Account Access</h2>
-        <p style="color: var(--text-muted); font-size: 14px;">Sign in or create your account with Firebase email/password.</p>
+        <h2 id="auth-title" style="color: white;">Welcome Back</h2>
+        <p id="auth-subtitle" style="color: var(--text-muted); font-size: 14px;">Sign in with the email and password you used while signing up.</p>
+      </div>
+      <div style="display: flex; gap: 10px; margin-bottom: 18px;">
+        <button class="secondary-btn w-100" id="auth-tab-login" type="button" style="padding: 12px; font-size: 14px;">Sign In</button>
+        <button class="secondary-btn w-100" id="auth-tab-signup" type="button" style="padding: 12px; font-size: 14px;">Sign Up</button>
       </div>
       <div class="input-group">
         <label>Email Address</label>
@@ -56,11 +61,15 @@
           <input type="password" id="auth-password" autocomplete="current-password" placeholder="Enter your password">
         </div>
       </div>
-      <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="primary-btn w-100" id="btn-login" style="padding: 12px; font-size: 14px;">Login</button>
-        <button class="secondary-btn w-100" id="btn-register" style="padding: 12px; font-size: 14px;">Sign Up</button>
+      <div class="input-group hidden" id="auth-confirm-group">
+        <label>Confirm Password</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-shield-halved"></i>
+          <input type="password" id="auth-password-confirm" autocomplete="new-password" placeholder="Confirm your password">
+        </div>
       </div>
-      <button class="back-btn" id="btn-close-auth" style="position: absolute; top: 15px; right: 15px; border: none; background: rgba(255,255,255,0.05);"><i class="fa-solid fa-xmark"></i></button>
+      <p id="auth-footer-note" style="margin-top: 6px; color: var(--text-muted); font-size: 12px; text-align: center;">New here? Switch to Sign Up and create your account first.</p>
+      <button class="primary-btn w-100" id="btn-auth-submit" type="button" style="padding: 12px; font-size: 14px; margin-top: 18px;">Sign In</button>
     </div>
   </div>
 

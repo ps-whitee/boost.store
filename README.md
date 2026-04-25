@@ -19,7 +19,8 @@ Admin login:
 ## Firebase Email/Password Setup
 
 1. Copy `.env.example` to `.env` and fill in your Firebase web config values.
-2. Put your Firebase Admin SDK JSON at `serviceAccountKey.json` or update `FIREBASE_CREDENTIALS`.
-3. In Firebase Console, enable `Authentication -> Sign-in method -> Email/Password`.
-4. In Firebase Console, add your domain to `Authentication -> Settings -> Authorized domains`.
-5. Restart the server after changing env values.
+2. In Firebase Console, enable `Authentication -> Sign-in method -> Email/Password`.
+3. In Firebase Console, add your domain to `Authentication -> Settings -> Authorized domains`.
+4. Restart the server after changing env values.
+
+This setup uses Firebase only for main-page email/password auth. The rest of the app data stays on the local backend.

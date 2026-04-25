@@ -5,10 +5,9 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const admin = require('firebase-admin');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const DATA_FILE = path.join(__dirname, 'data.json');
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
@@ -23,17 +22,16 @@ const FIREBASE_WEB_CONFIG = {
   projectId: process.env.FIREBASE_WEB_PROJECT_ID || '',
   storageBucket: process.env.FIREBASE_WEB_STORAGE_BUCKET || '',
   messagingSenderId: process.env.FIREBASE_WEB_MESSAGING_SENDER_ID || '',
-  appId: process.env.FIREBASE_WEB_APP_ID || ''
+  appId: process.env.FIREBASE_WEB_APP_ID || '',
+  measurementId: process.env.FIREBASE_WEB_MEASUREMENT_ID || ''
 };
-
-let db = null;
 
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 app.use((req, res, next) => {
-  const blockedPaths = ['server.js', 'package.json', 'package-lock.json', '.env', 'serviceAccountKey.json'];
+  const blockedPaths = ['server.js', 'package.json', 'package-lock.json', '.env', '.env.example', 'serviceAccountKey.json', 'data.json'];
 
   if (blockedPaths.some(fileName => req.path.includes(fileName))) {
     return res.status(403).send('Forbidden');
@@ -42,59 +40,120 @@ app.use((req, res, next) => {
   next();
 });
 
-function initializeFirebaseAdmin() {
-  try {
-    if (admin.apps.length) {
-      db = admin.firestore();
-      return;
-    }
-
-    const credentialsFile = process.env.FIREBASE_CREDENTIALS || './serviceAccountKey.json';
-    const credentialsPath = path.resolve(credentialsFile);
-
-    if (!fs.existsSync(credentialsPath)) {
-      console.warn(`Firebase credentials not found at ${credentialsPath}.`);
-      return;
-    }
-
-    const rawCredentials = fs.readFileSync(credentialsPath, 'utf8');
-
-    if (rawCredentials.includes('REPLACE_ME')) {
-      console.warn('Firebase credentials file still contains REPLACE_ME placeholders.');
-      return;
-    }
-
-    const serviceAccount = JSON.parse(rawCredentials);
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: serviceAccount.project_id || FIREBASE_WEB_CONFIG.projectId || undefined
-    });
-
-    db = admin.firestore();
-    console.log('Firebase Admin initialized successfully.');
-  } catch (error) {
-    console.error('Firebase initialization error:', error.message);
-  }
-}
-
-initializeFirebaseAdmin();
-
-function isFirebaseReady() {
-  return Boolean(db && admin.apps.length);
-}
-
-function hasFirebaseWebConfig() {
-  return Boolean(
-    FIREBASE_WEB_CONFIG.apiKey &&
-      FIREBASE_WEB_CONFIG.authDomain &&
-      FIREBASE_WEB_CONFIG.projectId &&
-      FIREBASE_WEB_CONFIG.appId
-  );
+function getEmptyData() {
+  return {
+    settings: {},
+    packages: {},
+    orders: [],
+    fundRequests: [],
+    users: []
+  };
 }
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function mapUser(data = {}) {
+  return {
+    uid: String(data.uid || ''),
+    email: normalizeEmail(data.email),
+    walletBalance: Number(data.walletBalance) || 0,
+    createdAt: data.createdAt || '',
+    lastLoginAt: data.lastLoginAt || ''
+  };
+}
+
+function sanitizeUser(user = {}) {
+  const mappedUser = mapUser(user);
+  return {
+    uid: mappedUser.uid,
+    email: mappedUser.email,
+    walletBalance: mappedUser.walletBalance
+  };
+}
+
+function normalizeData(data) {
+  const normalized = data && typeof data === 'object' ? data : {};
+
+  return {
+    settings: normalized.settings && typeof normalized.settings === 'object' ? normalized.settings : {},
+    packages: normalized.packages && typeof normalized.packages === 'object' ? normalized.packages : {},
+    orders: Array.isArray(normalized.orders) ? normalized.orders : [],
+    fundRequests: Array.isArray(normalized.fundRequests) ? normalized.fundRequests : [],
+    users: Array.isArray(normalized.users) ? normalized.users.map(mapUser) : []
+  };
+}
+
+function ensureDataFile() {
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(getEmptyData(), null, 2));
+  }
+}
+
+function readData() {
+  ensureDataFile();
+
+  try {
+    const fileContents = fs.readFileSync(DATA_FILE, 'utf8');
+    return normalizeData(JSON.parse(fileContents));
+  } catch (error) {
+    const fallbackData = normalizeData(getEmptyData());
+    fs.writeFileSync(DATA_FILE, JSON.stringify(fallbackData, null, 2));
+    return fallbackData;
+  }
+}
+
+function writeData(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(normalizeData(data), null, 2));
+}
+
+function findUserIndex(data, email) {
+  const normalizedEmail = normalizeEmail(email);
+  return data.users.findIndex(user => normalizeEmail(user.email) === normalizedEmail);
+}
+
+function getUserByEmail(data, email) {
+  const userIndex = findUserIndex(data, email);
+  return userIndex >= 0 ? mapUser(data.users[userIndex]) : null;
+}
+
+function upsertUser(data, userData = {}) {
+  const email = normalizeEmail(userData.email);
+
+  if (!email) {
+    throw new Error('User email is required');
+  }
+
+  const userIndex = findUserIndex(data, email);
+  const existingUser = userIndex >= 0 ? mapUser(data.users[userIndex]) : null;
+  const nextUser = {
+    uid: String(userData.uid || (existingUser && existingUser.uid) || ''),
+    email,
+    walletBalance: userData.walletBalance !== undefined
+      ? Number(userData.walletBalance) || 0
+      : (existingUser ? existingUser.walletBalance : 0),
+    createdAt: (existingUser && existingUser.createdAt) || new Date().toISOString(),
+    lastLoginAt: userData.lastLoginAt || new Date().toISOString()
+  };
+
+  if (userIndex >= 0) {
+    data.users[userIndex] = nextUser;
+  } else {
+    data.users.push(nextUser);
+  }
+
+  return nextUser;
+}
+
+function generateUniqueId(prefix, existingItems) {
+  let nextId = '';
+
+  do {
+    nextId = prefix + Math.floor(10000 + Math.random() * 90000);
+  } while (existingItems.some(item => item.id === nextId));
+
+  return nextId;
 }
 
 function parseCookies(req) {
@@ -212,38 +271,63 @@ function requireUser(req, res, next) {
   }
 
   req.userEmail = normalizeEmail(session.email);
-  req.userUid = session.uid;
+  req.userUid = String(session.uid);
   next();
 }
 
-function ensureDatabase(res) {
-  if (!isFirebaseReady()) {
-    res.status(500).json({ error: 'Firebase is not configured on the server' });
-    return false;
-  }
-
-  return true;
+function hasFirebaseWebConfig() {
+  return Boolean(
+    FIREBASE_WEB_CONFIG.apiKey &&
+    FIREBASE_WEB_CONFIG.authDomain &&
+    FIREBASE_WEB_CONFIG.projectId &&
+    FIREBASE_WEB_CONFIG.appId
+  );
 }
 
-function mapUser(data = {}) {
+function mapFirebaseLookupError(code) {
+  switch (code) {
+    case 'INVALID_ID_TOKEN':
+    case 'TOKEN_EXPIRED':
+    case 'USER_NOT_FOUND':
+      return 'Your sign in session is no longer valid. Please log in again.';
+    default:
+      return 'Invalid Firebase session.';
+  }
+}
+
+async function fetchFirebaseAccountByIdToken(idToken) {
+  if (!hasFirebaseWebConfig()) {
+    throw new Error('Firebase email/password auth is not configured yet.');
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(FIREBASE_WEB_CONFIG.apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorCode = payload && payload.error && payload.error.message;
+    const error = new Error(mapFirebaseLookupError(errorCode));
+    error.code = errorCode || 'INVALID_ID_TOKEN';
+    throw error;
+  }
+
+  const account = Array.isArray(payload.users) ? payload.users[0] : null;
+
+  if (!account || !account.localId || !normalizeEmail(account.email)) {
+    throw new Error('Firebase user email is required');
+  }
+
   return {
-    uid: data.uid || '',
-    email: normalizeEmail(data.email),
-    walletBalance: Number(data.walletBalance) || 0
+    uid: String(account.localId),
+    email: normalizeEmail(account.email)
   };
-}
-
-async function getGlobalData() {
-  if (!db) {
-    return { settings: {}, packages: {} };
-  }
-
-  const snapshot = await db.collection('global').doc('config').get();
-  return snapshot.exists ? snapshot.data() : { settings: {}, packages: {} };
-}
-
-async function saveGlobalData(data) {
-  await db.collection('global').doc('config').set(data, { merge: true });
 }
 
 app.use(express.static(__dirname));
@@ -252,16 +336,12 @@ app.use(express.static(__dirname));
 // PUBLIC API
 // =======================
 
-app.get('/api/data', async (req, res) => {
-  try {
-    const data = await getGlobalData();
-    res.json({
-      settings: data.settings || {},
-      packages: data.packages || {}
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load public data' });
-  }
+app.get('/api/data', (req, res) => {
+  const data = readData();
+  res.json({
+    settings: data.settings || {},
+    packages: data.packages || {}
+  });
 });
 
 app.get('/api/firebase/config', (req, res) => {
@@ -280,10 +360,6 @@ app.get('/api/firebase/config', (req, res) => {
 // =======================
 
 app.post('/api/users/session', async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
   const { idToken } = req.body || {};
 
   if (!idToken) {
@@ -291,42 +367,30 @@ app.post('/api/users/session', async (req, res) => {
   }
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const email = normalizeEmail(decodedToken.email);
+    const firebaseAccount = await fetchFirebaseAccountByIdToken(idToken);
+    const data = readData();
+    const user = upsertUser(data, {
+      uid: firebaseAccount.uid,
+      email: firebaseAccount.email,
+      lastLoginAt: new Date().toISOString()
+    });
 
-    if (!email) {
-      return res.status(400).json({ error: 'Firebase user email is required' });
-    }
-
-    const userRef = db.collection('users').doc(email);
-    await userRef.set(
-      {
-        uid: decodedToken.uid,
-        email,
-        walletBalance: admin.firestore.FieldValue.increment(0),
-        password: admin.firestore.FieldValue.delete(),
-        lastLoginAt: admin.firestore.FieldValue.serverTimestamp()
-      },
-      { merge: true }
-    );
-
-    const userDoc = await userRef.get();
-    const user = mapUser(userDoc.data());
+    writeData(data);
 
     setSignedCookie(
       req,
       res,
       USER_COOKIE_NAME,
       createSignedSessionValue({
-        uid: decodedToken.uid,
-        email
+        uid: user.uid,
+        email: user.email
       })
     );
 
-    res.json({ success: true, user });
+    res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     clearSignedCookie(req, res, USER_COOKIE_NAME);
-    res.status(401).json({ error: 'Invalid Firebase session' });
+    res.status(401).json({ error: error.message || 'Invalid Firebase session' });
   }
 });
 
@@ -335,43 +399,27 @@ app.post('/api/users/logout', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/users/me', requireUser, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
+app.get('/api/users/me', requireUser, (req, res) => {
+  const data = readData();
+  const user = getUserByEmail(data, req.userEmail);
+
+  if (!user) {
+    clearSignedCookie(req, res, USER_COOKIE_NAME);
+    return res.status(404).json({ error: 'User not found' });
   }
 
-  try {
-    const userDoc = await db.collection('users').doc(req.userEmail).get();
-
-    if (!userDoc.exists) {
-      clearSignedCookie(req, res, USER_COOKIE_NAME);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const [ordersSnapshot, fundsSnapshot] = await Promise.all([
-      db.collection('orders').where('email', '==', req.userEmail).get(),
-      db.collection('fundRequests').where('email', '==', req.userEmail).get()
-    ]);
-
-    res.json({
-      user: mapUser(userDoc.data()),
-      orders: ordersSnapshot.docs.map(doc => doc.data()),
-      fundRequests: fundsSnapshot.docs.map(doc => doc.data())
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load user data' });
-  }
+  res.json({
+    user: sanitizeUser(user),
+    orders: data.orders.filter(order => normalizeEmail(order.email) === req.userEmail),
+    fundRequests: data.fundRequests.filter(request => normalizeEmail(request.email) === req.userEmail)
+  });
 });
 
 // =======================
 // USER ACTION API
 // =======================
 
-app.post('/api/orders', requireUser, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
+app.post('/api/orders', requireUser, (req, res) => {
   const newOrder = req.body || {};
   const orderPrice = Number(newOrder.price);
 
@@ -379,59 +427,49 @@ app.post('/api/orders', requireUser, async (req, res) => {
     return res.status(400).json({ error: 'Invalid order data' });
   }
 
-  try {
-    const userRef = db.collection('users').doc(req.userEmail);
-    const orderRef = db.collection('orders').doc(newOrder.id);
+  const data = readData();
+  const userIndex = findUserIndex(data, req.userEmail);
 
-    const newBalance = await db.runTransaction(async transaction => {
-      const userDoc = await transaction.get(userRef);
-
-      if (!userDoc.exists) {
-        throw new Error('User not found');
-      }
-
-      const userData = userDoc.data();
-      const walletBalance = Number(userData.walletBalance) || 0;
-
-      if (walletBalance < orderPrice) {
-        throw new Error('Insufficient wallet balance');
-      }
-
-      const updatedBalance = walletBalance - orderPrice;
-
-      transaction.update(userRef, { walletBalance: updatedBalance });
-      transaction.set(orderRef, {
-        ...newOrder,
-        price: orderPrice,
-        email: req.userEmail,
-        userId: req.userUid,
-        payment: 'Wallet'
-      });
-
-      return updatedBalance;
-    });
-
-    res.status(201).json({
-      success: true,
-      order: {
-        ...newOrder,
-        price: orderPrice,
-        email: req.userEmail,
-        userId: req.userUid,
-        payment: 'Wallet'
-      },
-      newBalance
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  if (userIndex < 0) {
+    clearSignedCookie(req, res, USER_COOKIE_NAME);
+    return res.status(404).json({ error: 'User not found' });
   }
+
+  const user = mapUser(data.users[userIndex]);
+
+  if (user.walletBalance < orderPrice) {
+    return res.status(400).json({ error: 'Insufficient wallet balance' });
+  }
+
+  if (data.orders.some(order => order.id === newOrder.id)) {
+    return res.status(409).json({ error: 'Order already exists' });
+  }
+
+  user.walletBalance -= orderPrice;
+  data.users[userIndex] = {
+    ...user,
+    lastLoginAt: user.lastLoginAt || new Date().toISOString()
+  };
+
+  const savedOrder = {
+    ...newOrder,
+    price: orderPrice,
+    email: req.userEmail,
+    userId: req.userUid,
+    payment: 'Wallet'
+  };
+
+  data.orders.push(savedOrder);
+  writeData(data);
+
+  res.status(201).json({
+    success: true,
+    order: savedOrder,
+    newBalance: user.walletBalance
+  });
 });
 
-app.post('/api/fund-requests', requireUser, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
+app.post('/api/fund-requests', requireUser, (req, res) => {
   const { amount, paymentMethod, transactionRef } = req.body || {};
   const numericAmount = Number(amount);
 
@@ -439,24 +477,22 @@ app.post('/api/fund-requests', requireUser, async (req, res) => {
     return res.status(400).json({ error: 'Invalid fund request data' });
   }
 
-  try {
-    const requestId = '#FR-' + Math.floor(10000 + Math.random() * 90000);
-    const fundRequest = {
-      id: requestId,
-      email: req.userEmail,
-      userId: req.userUid,
-      amount: numericAmount,
-      paymentMethod: paymentMethod || 'Paytm',
-      transactionRef,
-      status: 'Pending',
-      date: new Date().toLocaleString()
-    };
+  const data = readData();
+  const fundRequest = {
+    id: generateUniqueId('#FR-', data.fundRequests),
+    email: req.userEmail,
+    userId: req.userUid,
+    amount: numericAmount,
+    paymentMethod: paymentMethod || 'Paytm',
+    transactionRef: String(transactionRef).trim(),
+    status: 'Pending',
+    date: new Date().toLocaleString()
+  };
 
-    await db.collection('fundRequests').doc(requestId).set(fundRequest);
-    res.json({ success: true, fundRequest });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to submit fund request' });
-  }
+  data.fundRequests.push(fundRequest);
+  writeData(data);
+
+  res.json({ success: true, fundRequest });
 });
 
 // =======================
@@ -495,165 +531,113 @@ app.post('/api/admin/logout', (req, res) => {
 // ADMIN DATA API
 // =======================
 
-app.get('/api/admin/data', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
+app.get('/api/admin/data', requireAdmin, (req, res) => {
+  const data = readData();
 
-  try {
-    const [globalData, ordersSnapshot, fundsSnapshot, usersSnapshot] = await Promise.all([
-      getGlobalData(),
-      db.collection('orders').get(),
-      db.collection('fundRequests').get(),
-      db.collection('users').get()
-    ]);
-
-    const users = usersSnapshot.docs.map(doc => {
-      const user = { ...doc.data() };
-      delete user.password;
-      return mapUser(user);
-    });
-
-    res.json({
-      settings: globalData.settings || {},
-      packages: globalData.packages || {},
-      orders: ordersSnapshot.docs.map(doc => doc.data()),
-      fundRequests: fundsSnapshot.docs.map(doc => doc.data()),
-      users
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load admin data' });
-  }
+  res.json({
+    settings: data.settings || {},
+    packages: data.packages || {},
+    orders: data.orders || [],
+    fundRequests: data.fundRequests || [],
+    users: data.users.map(sanitizeUser)
+  });
 });
 
-app.put('/api/orders/:id', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
+app.put('/api/orders/:id', requireAdmin, (req, res) => {
   const orderId = req.params.id;
   const { status } = req.body || {};
+  const data = readData();
+  const orderIndex = data.orders.findIndex(order => order.id === orderId);
 
-  try {
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderDoc = await orderRef.get();
-
-    if (!orderDoc.exists) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    await orderRef.update({ status });
-    res.json({ success: true, order: (await orderRef.get()).data() });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update order' });
+  if (orderIndex < 0) {
+    return res.status(404).json({ error: 'Order not found' });
   }
+
+  data.orders[orderIndex] = {
+    ...data.orders[orderIndex],
+    status
+  };
+
+  writeData(data);
+  res.json({ success: true, order: data.orders[orderIndex] });
 });
 
-app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
+app.delete('/api/orders/:id', requireAdmin, (req, res) => {
   const orderId = req.params.id;
+  const data = readData();
+  const orderIndex = data.orders.findIndex(order => order.id === orderId);
 
-  try {
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderDoc = await orderRef.get();
-
-    if (!orderDoc.exists) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    await orderRef.delete();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete order' });
+  if (orderIndex < 0) {
+    return res.status(404).json({ error: 'Order not found' });
   }
+
+  data.orders.splice(orderIndex, 1);
+  writeData(data);
+  res.json({ success: true });
 });
 
-app.put('/api/admin/fund-requests/:id', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
-  }
-
+app.put('/api/admin/fund-requests/:id', requireAdmin, (req, res) => {
   const requestId = req.params.id;
   const { status } = req.body || {};
+  const data = readData();
+  const fundIndex = data.fundRequests.findIndex(request => request.id === requestId);
 
-  try {
-    const fundRef = db.collection('fundRequests').doc(requestId);
-
-    await db.runTransaction(async transaction => {
-      const fundDoc = await transaction.get(fundRef);
-
-      if (!fundDoc.exists) {
-        throw new Error('Fund request not found');
-      }
-
-      const fundData = fundDoc.data();
-
-      if (fundData.status === 'Pending' && status === 'Approved') {
-        const userRef = db.collection('users').doc(normalizeEmail(fundData.email));
-        const userDoc = await transaction.get(userRef);
-
-        if (userDoc.exists) {
-          const walletBalance = Number(userDoc.data().walletBalance) || 0;
-          transaction.update(userRef, { walletBalance: walletBalance + Number(fundData.amount || 0) });
-        }
-      }
-
-      transaction.update(fundRef, { status });
-    });
-
-    res.json({ success: true, fundRequest: (await fundRef.get()).data() });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.delete('/api/admin/fund-requests/:id', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
+  if (fundIndex < 0) {
+    return res.status(404).json({ error: 'Fund request not found' });
   }
 
-  const requestId = req.params.id;
+  const currentRequest = data.fundRequests[fundIndex];
 
-  try {
-    const fundRef = db.collection('fundRequests').doc(requestId);
-    const fundDoc = await fundRef.get();
+  if (currentRequest.status === 'Pending' && status === 'Approved') {
+    const userIndex = findUserIndex(data, currentRequest.email);
 
-    if (!fundDoc.exists) {
-      return res.status(404).json({ error: 'Fund request not found' });
+    if (userIndex >= 0) {
+      const user = mapUser(data.users[userIndex]);
+      user.walletBalance += Number(currentRequest.amount) || 0;
+      data.users[userIndex] = {
+        ...user,
+        lastLoginAt: user.lastLoginAt || new Date().toISOString()
+      };
     }
-
-    await fundRef.delete();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete fund request' });
   }
+
+  data.fundRequests[fundIndex] = {
+    ...currentRequest,
+    status
+  };
+
+  writeData(data);
+  res.json({ success: true, fundRequest: data.fundRequests[fundIndex] });
 });
 
-app.post('/api/settings', requireAdmin, async (req, res) => {
-  if (!ensureDatabase(res)) {
-    return;
+app.delete('/api/admin/fund-requests/:id', requireAdmin, (req, res) => {
+  const requestId = req.params.id;
+  const data = readData();
+  const fundIndex = data.fundRequests.findIndex(request => request.id === requestId);
+
+  if (fundIndex < 0) {
+    return res.status(404).json({ error: 'Fund request not found' });
   }
 
+  data.fundRequests.splice(fundIndex, 1);
+  writeData(data);
+  res.json({ success: true });
+});
+
+app.post('/api/settings', requireAdmin, (req, res) => {
   const { settings, packages } = req.body || {};
-  const updateData = {};
+  const data = readData();
 
-  if (settings) {
-    updateData.settings = settings;
+  if (settings && typeof settings === 'object') {
+    data.settings = settings;
   }
 
-  if (packages) {
-    updateData.packages = packages;
+  if (packages && typeof packages === 'object') {
+    data.packages = packages;
   }
 
-  try {
-    await saveGlobalData(updateData);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save settings' });
-  }
+  writeData(data);
+  res.json({ success: true });
 });
 
 app.use((req, res) => {
